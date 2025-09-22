@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/rosakodu/zapretdeck/master/zapretdeck.png" alt="ZapretDeck" width="200"/>
 </p>
 
-# ZapretDeck — Лёгкий обход блокировок для Steam Deck и Linux
+# ZapretDeck — Простой обход блокировок для Steam Deck и Linux
 
 ZapretDeck — простое и удобное приложение для обхода сетевых блокировок YouTube Discord. Имеет графический интерфейс для управления сетью и DNS.
 
