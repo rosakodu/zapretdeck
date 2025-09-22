@@ -59,39 +59,29 @@ load_config() {
     if [ ! -f "$CONF_FILE" ]; then
         log "Файл конфигурации $CONF_FILE не найден, создаю с значениями по умолчанию"
         interface="any"
-        auto_update="false"
         strategy=$(find "$REPO_DIR" -maxdepth 1 -type f -name "*.bat" | head -n 1 | xargs -n 1 basename 2>/dev/null)
         if [ -z "$strategy" ]; then
             handle_error "Не найден ни один .bat файл в $REPO_DIR"
         fi
-        echo -e "interface=$interface\nauto_update=$auto_update\nstrategy=$strategy\ndns=disabled" > "$CONF_FILE"
+        echo -e "interface=$interface\nstrategy=$strategy\ndns=disabled" > "$CONF_FILE"
     else
         source "$CONF_FILE"
         interface=${interface:-any}
-        auto_update=${auto_update:-false}
         if [ -z "${strategy:-}" ]; then
             strategy=$(find "$REPO_DIR" -maxdepth 1 -type f -name "*.bat" | head -n 1 | xargs -n 1 basename 2>/dev/null)
             if [ -z "$strategy" ]; then
                 handle_error "Не найден ни один .bat файл в $REPO_DIR, и strategy не указан"
             fi
-            echo -e "interface=$interface\nauto_update=$auto_update\nstrategy=$strategy\ndns=${dns:-disabled}" > "$CONF_FILE"
+            echo -e "interface=$interface\nstrategy=$strategy\ndns=${dns:-disabled}" > "$CONF_FILE"
         fi
     fi
-    debug_log "Загружено из conf.env: interface=$interface, auto_update=$auto_update, strategy=$strategy, dns=$dns"
+    debug_log "Загружено из conf.env: interface=$interface, strategy=$strategy, dns=$dns"
 }
 
 # Функция для настройки репозитория
 setup_repository() {
     if [ ! -d "$REPO_DIR" ]; then
         log "Клонирование репозитория..."
-        git clone "$REPO_URL" "$REPO_DIR" 2>&1 | while read -r line; do log "git: $line"; done || handle_error "Ошибка при клонировании репозитория"
-        cd "$REPO_DIR" && git checkout a609396772dfe2a3c85b0cec8c314ff9ac96a5c0 2>&1 | while read -r line; do log "git: $line"; done && cd ..
-        chmod +x "$BASE_DIR/rename_bat.sh"
-        rm -rf "$REPO_DIR/.git"
-        "$BASE_DIR/rename_bat.sh" 2>&1 | while read -r line; do log "rename_bat: $line"; done || handle_error "Ошибка при переименовании файлов"
-    elif [ "$auto_update" == "true" ] && $NOINTERACTIVE; then
-        log "Обновление репозитория..."
-        rm -rf "$REPO_DIR"
         git clone "$REPO_URL" "$REPO_DIR" 2>&1 | while read -r line; do log "git: $line"; done || handle_error "Ошибка при клонировании репозитория"
         cd "$REPO_DIR" && git checkout a609396772dfe2a3c85b0cec8c314ff9ac96a5c0 2>&1 | while read -r line; do log "git: $line"; done && cd ..
         chmod +x "$BASE_DIR/rename_bat.sh"
@@ -113,6 +103,7 @@ select_strategy() {
     cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
     
     if $NOINTERACTIVE; then
+        debug_log "Неинтерактивный режим, strategy=$strategy"
         if [ ! -f "$strategy" ]; then
             handle_error "Указанный .bat файл стратегии $strategy не найден"
         fi
@@ -130,16 +121,19 @@ select_strategy() {
     fi
     
     echo "Доступные стратегии:"
-    select strategy in "${bat_files[@]}"; do
-        if [ -n "$strategy" ]; then
-            log "Выбрана стратегия: $strategy"
-            cd ..
-            break
-        fi
-        echo "Неверный выбор. Попробуйте еще раз."
+    for i in "${!bat_files[@]}"; do
+        echo "$((i+1))) ${bat_files[i]}"
     done
-    
-    parse_bat_file "$strategy"
+    read -p "#? " choice
+    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le ${#bat_files[@]} ]]; then
+        strategy="${bat_files[$((choice-1))]}"
+        log "Выбрана стратегия: $strategy"
+        parse_bat_file "$strategy"
+        cd ..
+    else
+        echo "Неверный выбор. Попробуйте еще раз."
+        select_strategy
+    fi
 }
 
 # Функция парсинга параметров из bat файла
