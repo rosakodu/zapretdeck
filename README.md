@@ -21,6 +21,10 @@ DNS: Используйте DNS от xbox-dns.ru
 Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager`  
 Python-модули: `customtkinter`, `requests`  
 
+**ПРИМЕЧАНИЕ:**
+
+🙂ЗА СЛОМАННУЮ СИСТЕМУ АВТОР ОТВЕТСТВЕННОСТИ НЕ НЕСЁТ🙂
+
 **Установка:**  
 ```bash
 
@@ -35,3 +39,4 @@ chmod +x install.sh
 ./install.sh
 sudo steamos-readonly enable
 zapretdeck
+
