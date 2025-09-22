@@ -83,10 +83,10 @@ sudo chmod 644 /opt/zapretdeck/requirements.txt
 
 # Создание файла конфигурации с правами для записи
 sudo bash -c "cat > /opt/zapretdeck/conf.env" << EOF
-interface=any
+interface=
 auto_update=false
-strategy=general_alt2.bat
-dns=enabled
+strategy=
+dns=
 EOF
 sudo chmod 666 /opt/zapretdeck/conf.env
 sudo chown $(whoami):$(whoami) /opt/zapretdeck/conf.env
