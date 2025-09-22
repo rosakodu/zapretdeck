@@ -18,6 +18,7 @@ DNS: Используйте DNS от xbox-dns.ru
 
 
 **Зависимости:**  
+
 Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager`  
 Python-модули: `customtkinter`, `requests`  
 
