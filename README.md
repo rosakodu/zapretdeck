@@ -33,7 +33,7 @@ sudo steamos-readonly disable
 mkdir ~/zapretdeck
 cd ~/zapretdeck
 wget https://github.com/rosakodu/zapretdeck/releases/download/v0.0.1/ZapretDeck_v0.0.1.tar.gz
-tar -xzf ZapretDeck_v0.0.1.tar.gz
+tar --warning=no-unknown-keyword -xzf ZapretDeck_v0.0.1.tar.gz
 rm ZapretDeck_v0.0.1.tar.gz
 cd ~/zapretdeck/zapretdeck
 chmod +x install.sh
