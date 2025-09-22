@@ -16,17 +16,21 @@ DNS: Используйте DNS от xbox-dns.ru
 
 Автозапуск: Настройте запуск при включении устройства и работы обхода в игровом режиме  
 
-
 **Зависимости:**  
 
 Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager`  
 Python-модули: `customtkinter`, `requests`  
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rosakodu/zapretdeck/master/screenshots/screenshot.png" alt="Скриншот ZapretDeck" width="400"/>
+</p>
+
+
 **ПРИМЕЧАНИЕ:**
 
 🙂ЗА СЛОМАННУЮ СИСТЕМУ АВТОР ОТВЕТСТВЕННОСТИ НЕ НЕСЁТ🙂
 
-**Установка:**  
+**УСТАНОВКА:**  
 ```bash
 
 sudo steamos-readonly disable
