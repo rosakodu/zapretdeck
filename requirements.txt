@@ -1,0 +1,5 @@
+customtkinter>=5.2.0
+pillow>=9.0.0
+packaging>=21.0
+beautifulsoup4
+requests
