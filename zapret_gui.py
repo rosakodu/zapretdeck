@@ -200,7 +200,7 @@ class ZapretGUI(ctk.CTk):
         if os.path.exists(VERSION_FILE):
             with open(VERSION_FILE, "r") as f:
                 return f.read().strip()
-        return "0.0.2"
+        return "0.0.3"
 
     def check_dependencies(self):
         deps = ['ip', 'nft', 'systemctl', 'pgrep', 'pkill', 'bash', 'curl', 'git', 'nmcli']

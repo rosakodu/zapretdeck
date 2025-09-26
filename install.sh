@@ -54,7 +54,7 @@ for file in "${required_files[@]}"; do
 done
 
 # Проверка системных зависимостей
-dependencies=("bash" "sed" "grep" "awk" "nftables" "python3" "python-pip" "networkmanager" "iproute2" "curl" "git")
+dependencies=("bash" "sed" "grep" "awk" "nftables" "python3" "python-pip" "networkmanager" "iproute2" "curl" "git" "tk")
 for dep in "${dependencies[@]}"; do
     if ! command -v "$dep" &>/dev/null; then
         echo "y" | sudo pacman -S --noconfirm --needed "$dep"
@@ -92,7 +92,7 @@ sudo chmod 666 /opt/zapretdeck/conf.env
 sudo chown $(whoami):$(whoami) /opt/zapretdeck/conf.env
 
 # Создание version.txt
-sudo bash -c "echo '0.0.2' > /opt/zapretdeck/version.txt"
+sudo bash -c "echo '0.0.3' > /opt/zapretdeck/version.txt"
 sudo chmod 644 /opt/zapretdeck/version.txt
 
 # Создание виртуального окружения и установка Python-зависимостей
