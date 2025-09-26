@@ -14,8 +14,8 @@ DNS: Включите или выключите свои DNS
 Автозапуск: Настройте запуск при включении устройства и в игровом режиме  
 
 **Зависимости**  
-Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager`  
-Python-модули: `customtkinter`, `requests`  
+Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager` 
+Python-модули: `customtkinter`, `requests` `pillow` `packaging` `beautifulsoup`
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/rosakodu/zapretdeck/master/screanshots/screenshot.png" alt="Скриншот ZapretDeck" width="400"/>
@@ -26,14 +26,14 @@ Remote Play и передача файлов не будут работать в
 
 Установка и запуск:  
 ```bash
-sudo steamos-readonly disable                                
+sudo steamos-readonly disable
 rm -rf ~/zapretdeck
 mkdir ~/zapretdeck
 cd ~/zapretdeck
-wget https://github.com/rosakodu/zapretdeck/releases/download/v0.0.2/ZapretDeck_v0.0.2.tar.gz
-tar --warning=no-unknown-keyword -xzf ZapretDeck_v0.0.2.tar.gz
-rm ZapretDeck_v0.0.1.tar.gz
-cd ~/zapretdeck/zapretdeck
+wget https://github.com/rosakodu/zapretdeck/releases/download/v0.0.3/ZapretDeck_v0.0.3.tar.gz
+tar --warning=no-unknown-keyword -xzf ZapretDeck_v0.0.3.tar.gz
+rm ZapretDeck_v0.0.3.tar.gz
+cd zapretdeck
 chmod +x install.sh
 ./install.sh
 sudo steamos-readonly enable
