@@ -41,6 +41,12 @@ else
     readonly_was_enabled=false
 fi
 
+# Инициализация и заполнение keyring для pacman
+echo "Инициализация keyring для pacman..."
+sudo pacman-key --init || { echo "Ошибка: Не удалось инициализировать keyring."; exit 1; }
+sudo pacman-key --populate || { echo "Ошибка: Не удалось заполнить keyring."; exit 1; }
+sudo pacman -Syu --noconfirm || { echo "Ошибка: Не удалось обновить систему."; exit 1; }
+
 # Установка TEMP_DIR как текущей директории
 TEMP_DIR="$(pwd)"
 
