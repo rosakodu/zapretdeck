@@ -15,9 +15,9 @@ DNS: Включите или выключите свои DNS
 
 **Зависимости**  
 
-Системные: `pacman`,`bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager` 
+Системные: `pacman` `bash` `nftables` `python3` `curl` `git` `networkmanager` 
 
-Python-модули: `customtkinter`, `requests` `pillow` `packaging` `beautifulsoup`
+Python-модули: `customtkinter` `requests` `pillow` `packaging` `beautifulsoup`
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/rosakodu/zapretdeck/master/screanshots/screenshot.png" alt="Скриншот ZapretDeck" width="400"/>
