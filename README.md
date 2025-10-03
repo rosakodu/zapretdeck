@@ -14,7 +14,7 @@ DNS: Включите или выключите свои DNS
 Автозапуск: Настройте запуск при включении устройства и в игровом режиме  
 
 **Зависимости**  
-Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager` 
+Системные: `pacman`,`bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager` 
 Python-модули: `customtkinter`, `requests` `pillow` `packaging` `beautifulsoup`
 
 <p align="center">
