@@ -26,7 +26,7 @@ Python-модули: `customtkinter` `requests` `pillow` `packaging` `beautifuls
 **ВАЖНО**  
 Remote Play и передача файлов не будут работать во время активации скрипта
 
-Установка и запуск:  
+Установка:  
 ```bash
 sudo steamos-readonly disable
 mkdir ~/zapretdeck
