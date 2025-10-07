@@ -28,6 +28,7 @@ Remote Play и передача файлов не будут работать в
 
 Установка и запуск:  
 ```bash
+sudo steamos-readonly disable
 mkdir ~/zapretdeck
 cd ~/zapretdeck
 curl -L -o ZapretDeck_v0.0.4.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v0.0.4/ZapretDeck_v0.0.4.tar.gz
