@@ -10,7 +10,7 @@ import logging
 import requests
 from packaging import version
 
-# Настройка логирования
+# Логирование
 logging.basicConfig(filename='/opt/zapretdeck/debug.log', level=logging.INFO, format='%(asctime)s [DEBUG] %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -25,11 +25,11 @@ VERSION_FILE = os.path.join(BASE_DIR, "version.txt")
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-# Цвета в QT-стиле
+# Цвета
 COLOR_BG = "#242424"
-COLOR_ACCENT = "#0078D4"  # QT синий
-COLOR_GREEN = "#107C10"  # QT зелёный
-COLOR_RED = "#C50F1F"  # QT красный
+COLOR_ACCENT = "#0078D4"
+COLOR_GREEN = "#107C10"
+COLOR_RED = "#C50F1F"
 COLOR_WHITE = "#FFFFFF"
 COLOR_GRAY = "#5C5C5C"
 COLOR_LIGHT_GRAY = "#B3B3B3"
@@ -102,23 +102,24 @@ class ZapretGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("ZapretDeck")
-        self.geometry("350x430")
-        self.minsize(350, 430)
-        self.maxsize(350, 650)
+        self.geometry("650x650")
+        self.minsize(650, 650)
+        self.maxsize(650, 650)
         self.session_process = None
         self.sudo_password = None
         self.configure(fg_color=COLOR_BG)
-        self.warning_label = None  # Persistent warning for missing strategies
+        self.warning_label = None
         icon_path = os.path.join(BASE_DIR, "zapretdeck.png")
         if os.path.exists(icon_path):
             icon = PhotoImage(file=icon_path)
             self.wm_iconphoto(True, icon)
-        self.protocol("WM_DELETE_WINDOW", self.on_exit)  # Handle window close
+        self.protocol("WM_DELETE_WINDOW", self.on_exit)
+
         if not self.check_dependencies():
             logger.error("Завершение из-за отсутствия зависимостей")
             self.quit()
             return
-        # Show loading indicator
+
         self.loading_label = ctk.CTkLabel(self, text="Загрузка...", font=("Inter", 12), text_color=COLOR_WHITE)
         self.loading_label.pack(pady=10)
         self.update()
@@ -126,7 +127,7 @@ class ZapretGUI(ctk.CTk):
         self.after(1000, self.check_session_status)
 
     def setup_ui(self):
-        self.loading_label.destroy()  # Remove loading label
+        self.loading_label.destroy()
         self.main_frame = ctk.CTkFrame(self, corner_radius=10, fg_color=COLOR_BG)
         self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -157,7 +158,7 @@ class ZapretGUI(ctk.CTk):
 
         button_container = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         button_container.pack(pady=10)
-        self.session_button = RoundButton(button_container, text="▶ Пуск", command=self.toggle_session,
+        self.session_button = RoundButton(button_container, text="Пуск", command=self.toggle_session,
                                          fg_color=COLOR_GREEN, size=150)
         self.session_button.pack()
 
@@ -173,6 +174,12 @@ class ZapretGUI(ctk.CTk):
                                         font=("Inter", 11), width=220, height=30,
                                         progress_color=COLOR_ACCENT)
         self.dns_switch.pack(anchor="w", pady=2)
+
+        # Изменено: "Cloudflare" вместо "Cloudflare 1.1.1.1"
+        self.cloudflare_dns_switch = ctk.CTkSwitch(switch_frame, text="Cloudflare", command=self.toggle_cloudflare_dns,
+                                                   font=("Inter", 11), width=220, height=30,
+                                                   progress_color=COLOR_ACCENT)
+        self.cloudflare_dns_switch.pack(anchor="w", pady=2)
 
         button_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         button_frame.pack(fill="x", padx=5, pady=2)
@@ -200,7 +207,7 @@ class ZapretGUI(ctk.CTk):
         if os.path.exists(VERSION_FILE):
             with open(VERSION_FILE, "r") as f:
                 return f.read().strip()
-        return "0.0.3"
+        return "0.0.4"
 
     def check_dependencies(self):
         deps = ['ip', 'nft', 'systemctl', 'pgrep', 'pkill', 'bash', 'curl', 'git', 'nmcli']
@@ -229,16 +236,16 @@ class ZapretGUI(ctk.CTk):
         try:
             result = subprocess.run(["pgrep", "-f", "nfqws"], capture_output=True, text=True)
             is_running = result.returncode == 0
-            if is_running and self.session_button.text != "⏹ Стоп":
-                logger.info("Обнаружены процессы nfqws, синхронизация состояния кнопки")
-                self.session_button.configure(text="⏹ Стоп", fg_color=COLOR_RED)
-            elif not is_running and self.session_button.text != "▶ Пуск":
-                logger.info("Процессы nfqws не найдены, завершение сессии")
+            if is_running and self.session_button.text != "Стоп":
+                logger.info("Обнаружены процессы nfqws")
+                self.session_button.configure(text="Стоп", fg_color=COLOR_RED)
+            elif not is_running and self.session_button.text != "Пуск":
+                logger.info("Процессы nfqws не найдены")
                 self.session_process = None
-                self.session_button.configure(text="▶ Пуск", fg_color=COLOR_GREEN)
+                self.session_button.configure(text="Пуск", fg_color=COLOR_GREEN)
             self.after(1000, self.check_session_status)
         except Exception as e:
-            logger.error(f"Ошибка проверки статуса сессии: {e}")
+            logger.error(f"Ошибка проверки сессии: {e}")
 
     def check_service_status(self):
         try:
@@ -248,75 +255,88 @@ class ZapretGUI(ctk.CTk):
                 self.service_enable_switch.select()
             else:
                 self.service_enable_switch.deselect()
-                if result.stdout.strip() == "enabled" and not is_active:
-                    password = self.ask_sudo_password()
-                    if password:
-                        subprocess.run(["sudo", "-S", "systemctl", "disable", "zapret_discord_youtube"], input=password + "\n", text=True)
-                        logger.info("Сервис отключен из-за неактивности")
-                        status_label = ctk.CTkLabel(self.main_frame, text="Сервис отключен: неактивен", text_color=COLOR_RED, font=("Inter", 11))
-                        status_label.pack(pady=2)
-                        self.after(3000, status_label.destroy)
         except Exception as e:
-            logger.error(f"Ошибка проверки статуса сервиса: {e}")
+            logger.error(f"Ошибка проверки сервиса: {e}")
 
     def check_dns_status(self):
         try:
-            if os.path.exists("/etc/resolv.conf") and "Generated by NetworkManager" in subprocess.run(["cat", "/etc/resolv.conf"], capture_output=True, text=True).stdout:
-                if shutil.which("nmcli"):
-                    result = subprocess.run(["nmcli", "con", "show", "--active"], capture_output=True, text=True)
-                    active_con = [line for line in result.stdout.splitlines() if "NAME" not in line]
-                    if active_con:
-                        con_name = active_con[0].split()[0]
-                        dns_result = subprocess.run(["nmcli", "con", "show", con_name], capture_output=True, text=True)
-                        dns_list = [line for line in dns_result.stdout.splitlines() if "ipv4.dns" in line]
-                        if dns_list and any(dns in dns_list[0] for dns in ["176.99.11.77", "80.78.247.254"]):
+            if not os.path.exists("/etc/resolv.conf"):
+                self.dns_switch.deselect()
+                self.cloudflare_dns_switch.deselect()
+                return
+
+            with open("/etc/resolv.conf", "r") as f:
+                content = f.read()
+
+            # NetworkManager
+            if "Generated by NetworkManager" in content and shutil.which("nmcli"):
+                result = subprocess.run(["nmcli", "con", "show", "--active"], capture_output=True, text=True)
+                active_con = [line for line in result.stdout.splitlines() if "NAME" not in line]
+                if active_con:
+                    con_name = active_con[0].split()[0]
+                    dns_result = subprocess.run(["nmcli", "con", "show", con_name], capture_output=True, text=True)
+                    dns_lines = [line for line in dns_result.stdout.splitlines() if "ipv4.dns" in line]
+                    if dns_lines:
+                        dns_values = dns_lines[0].split(":", 1)[1].strip()
+                        if any(ip in dns_values for ip in ["176.99.11.77", "80.78.247.254"]):
                             self.dns_switch.select()
-                            logger.info("DNS активен через NetworkManager")
+                            self.cloudflare_dns_switch.deselect()
                             return
-            result = subprocess.run(["grep", "-E", "176.99.11.77|80.78.247.254", "/etc/resolv.conf"], capture_output=True, text=True)
-            if result.returncode == 0:
+                        elif any(ip in dns_values for ip in ["1.1.1.1", "1.0.0.1"]):
+                            self.cloudflare_dns_switch.select()
+                            self.dns_switch.deselect()
+                            return
+
+            # Прямой resolv.conf
+            if any(ip in content for ip in ["176.99.11.77", "80.78.247.254"]):
                 self.dns_switch.select()
-                logger.info("DNS активен в /etc/resolv.conf")
+                self.cloudflare_dns_switch.deselect()
+            elif any(ip in content for ip in ["1.1.1.1", "1.0.0.1"]):
+                self.cloudflare_dns_switch.select()
+                self.dns_switch.deselect()
             else:
                 self.dns_switch.deselect()
-                logger.info("DNS не активен")
+                self.cloudflare_dns_switch.deselect()
         except Exception as e:
-            logger.error(f"Ошибка проверки статуса DNS: {e}")
+            logger.error(f"Ошибка проверки DNS: {e}")
             self.dns_switch.deselect()
+            self.cloudflare_dns_switch.deselect()
 
     def load_config(self):
         if not os.path.exists(CONF_FILE):
             self.interface_var.set("any")
             self.strategy_var.set("")
             self.dns_switch.deselect()
+            self.cloudflare_dns_switch.deselect()
             self.update_config("initial")
         else:
             try:
                 with open(CONF_FILE, "r") as f:
-                    lines = f.readlines()
-                    for line in lines:
+                    for line in f:
                         line = line.strip()
                         if line.startswith("interface="):
-                            interface = line.split("=", 1)[1]
-                            self.interface_var.set(interface)
+                            self.interface_var.set(line.split("=", 1)[1])
                         elif line.startswith("strategy="):
-                            strategy = line.split("=", 1)[1]
-                            self.strategy_var.set(strategy)
-                        elif line.startswith("dns="):
-                            dns_state = line.split("=", 1)[1]
-                            if dns_state == "enabled":
+                            self.strategy_var.set(line.split("=", 1)[1])
+                        elif line.startswith("dns_provider="):
+                            provider = line.split("=", 1)[1]
+                            if provider == "xbox":
                                 self.dns_switch.select()
-                            elif dns_state == "disabled":
+                                self.cloudflare_dns_switch.deselect()
+                            elif provider == "cloudflare":
+                                self.cloudflare_dns_switch.select()
                                 self.dns_switch.deselect()
+                            else:
+                                self.dns_switch.deselect()
+                                self.cloudflare_dns_switch.deselect()
             except Exception as e:
-                logger.error(f"Ошибка при чтении {CONF_FILE}: {e}")
-        if not self.interface_var.get() and self.interface_combo.cget("values"):
+                logger.error(f"Ошибка чтения {CONF_FILE}: {e}")
+        if not self.interface_var.get():
             self.interface_var.set('any')
             self.update_config("interface")
         self.check_dns_status()
 
     def load_strategies(self):
-        logger.info(f"Загрузка стратегий из {REPO_DIR}")
         if self.warning_label:
             self.warning_label.destroy()
             self.warning_label = None
@@ -328,14 +348,10 @@ class ZapretGUI(ctk.CTk):
             self.strategy_var.set("")
             self.session_button.configure(state="disabled")
             self.service_enable_switch.configure(state="disabled")
-            self.update_config("strategy")
             return
         try:
             strategies = [f for f in os.listdir(REPO_DIR) if f.endswith(".bat") and os.access(os.path.join(REPO_DIR, f), os.R_OK)]
-            logger.info(f"Все файлы в {REPO_DIR}: {os.listdir(REPO_DIR)}")
-            logger.info(f"Найдены доступные .bat файлы: {strategies}")
             if not strategies:
-                logger.error(f"Не найдены .bat файлы в {REPO_DIR}")
                 self.warning_label = ctk.CTkLabel(self.main_frame, text="Файлы стратегий не найдены!", text_color=COLOR_RED, font=("Inter", 11))
                 self.warning_label.pack(pady=2)
                 self.strategy_combo.configure(values=[])
@@ -344,10 +360,8 @@ class ZapretGUI(ctk.CTk):
                 self.service_enable_switch.configure(state="disabled")
             else:
                 self.strategy_combo.configure(values=strategies)
-                self.strategy_combo.update()  # Force GUI update
                 if not self.strategy_var.get() or self.strategy_var.get() not in strategies:
                     self.strategy_var.set(strategies[0])
-                    logger.info(f"Установлена стратегия по умолчанию: {self.strategy_var.get()}")
                 self.session_button.configure(state="normal")
                 self.service_enable_switch.configure(state="normal")
             self.update_config("strategy")
@@ -361,23 +375,25 @@ class ZapretGUI(ctk.CTk):
         interface = self.interface_var.get() or "any"
         strategy = self.strategy_var.get() or ""
         auto_update = "false"
-        dns_state = "enabled" if self.dns_switch.get() else "disabled"
-        logger.info(f"update_config от {source}: interface='{interface}', strategy='{strategy}', auto_update={auto_update}, dns={dns_state}")
+
+        if self.dns_switch.get():
+            dns_provider = "xbox"
+        elif self.cloudflare_dns_switch.get():
+            dns_provider = "cloudflare"
+        else:
+            dns_provider = "disabled"
+
+        logger.info(f"update_config: dns_provider={dns_provider}")
         try:
             with open(CONF_FILE, "w") as f:
                 f.write(f"interface={interface}\n")
                 f.write(f"auto_update={auto_update}\n")
                 f.write(f"strategy={strategy}\n")
-                f.write(f"dns={dns_state}\n")
-            logger.info(f"conf.env создан/обновлён: {CONF_FILE}")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Конфигурация сохранена ({source})", text_color=COLOR_GREEN, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(2000, status_label.destroy)
+                f.write(f"dns_provider={dns_provider}\n")
+            self._show_status("Конфигурация сохранена", COLOR_GREEN)
         except Exception as e:
             logger.error(f"Ошибка записи {CONF_FILE}: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+            self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
 
     def ask_sudo_password(self):
         if self.sudo_password:
@@ -387,40 +403,101 @@ class ZapretGUI(ctk.CTk):
         self.sudo_password = dialog.password
         return self.sudo_password
 
+    def toggle_dns(self):
+        if self.dns_switch.get():
+            if self.cloudflare_dns_switch.get():
+                self.cloudflare_dns_switch.deselect()
+            self._apply_dns("xbox")
+        else:
+            if not self.cloudflare_dns_switch.get():
+                self._apply_dns("unset")
+            else:
+                self.update_config("dns")
+
+    def toggle_cloudflare_dns(self):
+        if self.cloudflare_dns_switch.get():
+            if self.dns_switch.get():
+                self.dns_switch.deselect()
+            self._apply_dns("cloudflare")
+        else:
+            if not self.dns_switch.get():
+                self._apply_dns("unset")
+            else:
+                self.update_config("dns")
+
+    def _apply_dns(self, action):
+        if not os.path.exists(DNS_SCRIPT):
+            logger.error(f"Скрипт DNS не найден: {DNS_SCRIPT}")
+            self.dns_switch.deselect()
+            self.cloudflare_dns_switch.deselect()
+            self._show_status("Скрипт DNS не найден!", COLOR_RED)
+            return
+
+        if not os.access(DNS_SCRIPT, os.X_OK):
+            logger.error(f"Скрипт DNS не исполняемый: {DNS_SCRIPT}")
+            self.dns_switch.deselect()
+            self.cloudflare_dns_switch.deselect()
+            self._show_status("Скрипт DNS не исполняемый!", COLOR_RED)
+            return
+
+        password = self.ask_sudo_password()
+        if not password:
+            self.dns_switch.deselect()
+            self.cloudflare_dns_switch.deselect()
+            self.update()
+            return
+
+        try:
+            if action == "unset":
+                cmd = ["sudo", "-S", DNS_SCRIPT, "unset"]
+                text = "DNS отключён"
+            else:
+                cmd = ["sudo", "-S", DNS_SCRIPT, "set", action]
+                provider = "xbox-dns.ru" if action == "xbox" else "Cloudflare"
+                text = f"{provider} DNS включён"
+
+            result = subprocess.run(cmd, input=password + "\n", text=True, capture_output=True, check=True)
+            logger.info(f"DNS {action}: {result.stdout.strip()}")
+
+            self.check_dns_status()
+            self.update_config("dns")
+            self._show_status(text, COLOR_GREEN)
+
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Ошибка DNS: {e.stderr}")
+            self.check_dns_status()
+            self._show_status(f"Ошибка DNS: {e.stderr[:50]}...", COLOR_RED)
+        except Exception as e:
+            logger.error(f"Неизвестная ошибка DNS: {e}")
+            self.check_dns_status()
+            self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
+        self.update()
+
+    def _show_status(self, text, color, timeout=2500):
+        status_label = ctk.CTkLabel(self.main_frame, text=text, text_color=color, font=("Inter", 11))
+        status_label.pack(pady=2)
+        self.after(timeout, status_label.destroy)
+
     def toggle_session(self):
         self.session_button.configure(state="disabled")
         self.update()
-        if self.session_button.text == "▶ Пуск":
+        if self.session_button.text == "Пуск":
             self.load_strategies()
-            if self.interface_var.get() == "" or self.strategy_var.get() == "":
-                logger.error(f"Не выбраны интерфейс или стратегия: interface={self.interface_var.get()}, strategy={self.strategy_var.get()}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Выберите интерфейс и стратегию!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
+            if not self.interface_var.get() or not self.strategy_var.get():
+                self._show_status("Выберите интерфейс и стратегию!", COLOR_RED)
                 self.session_button.configure(state="normal")
-                self.update()
                 return
             if not os.path.exists(MAIN_SCRIPT):
-                logger.error(f"Скрипт не найден: {MAIN_SCRIPT}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Скрипт сессии не найден!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
+                self._show_status("Скрипт сессии не найден!", COLOR_RED)
                 self.session_button.configure(state="normal")
-                self.update()
                 return
             if not os.path.exists(os.path.join(REPO_DIR, self.strategy_var.get())):
-                logger.error(f"Файл стратегии не найден: {self.strategy_var.get()}")
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Файл стратегии {self.strategy_var.get()} не найден!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
+                self._show_status("Файл стратегии не найден!", COLOR_RED)
                 self.session_button.configure(state="normal")
-                self.update()
                 return
             password = self.ask_sudo_password()
             if not password:
-                logger.error("Пароль sudo не предоставлен")
                 self.session_button.configure(state="normal")
-                self.update()
                 return
             try:
                 subprocess.run(["sudo", "-S", "pkill", "-f", "nfqws"], input=password + "\n", text=True, capture_output=True)
@@ -436,65 +513,39 @@ class ZapretGUI(ctk.CTk):
                 self.session_process.stdin.write(password + "\n")
                 self.session_process.stdin.flush()
                 time.sleep(1)
-                logger.info(f"Сессия запущена с interface={self.interface_var.get()}, strategy={self.strategy_var.get()}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сессия запущена", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.session_button.configure(text="⏹ Стоп", fg_color=COLOR_RED, state="normal")
-                self.update()
+                self._show_status("Сессия запущена", COLOR_GREEN)
+                self.session_button.configure(text="Стоп", fg_color=COLOR_RED, state="normal")
             except Exception as e:
-                logger.error(f"Ошибка запуска сессии: {e}")
-                self.session_process = None
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка запуска сессии: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
+                logger.error(f"Ошибка запуска: {e}")
+                self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
                 self.session_button.configure(state="normal")
-                self.update()
         else:
             password = self.ask_sudo_password()
             if not password:
                 self.session_button.configure(state="normal")
-                self.update()
                 return
             try:
                 subprocess.run(["sudo", "-S", "nft", "flush", "ruleset"], input=password + "\n", text=True, capture_output=True, check=True)
                 subprocess.run(["sudo", "-S", "pkill", "-f", "nfqws"], input=password + "\n", text=True, capture_output=True)
                 if self.session_process:
                     self.session_process.terminate()
-                    try:
-                        self.session_process.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        self.session_process.kill()
+                    self.session_process.wait(timeout=10)
                 self.session_process = None
                 time.sleep(1)
-                logger.info("Сессия остановлена")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сессия остановлена", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.session_button.configure(text="▶ Пуск", fg_color=COLOR_GREEN, state="normal")
-                self.update()
+                self._show_status("Сессия остановлена", COLOR_GREEN)
+                self.session_button.configure(text="Пуск", fg_color=COLOR_GREEN, state="normal")
             except Exception as e:
-                logger.error(f"Ошибка остановки сессии: {e}")
-                self.session_process = None
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка остановки сессии: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.session_button.configure(text="▶ Пуск", fg_color=COLOR_GREEN, state="normal")
-                self.update()
+                logger.error(f"Ошибка остановки: {e}")
+                self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
+                self.session_button.configure(text="Пуск", fg_color=COLOR_GREEN, state="normal")
         self.check_session_status()
 
     def create_systemd_service(self):
         if not os.path.exists(MAIN_SCRIPT) or not os.path.exists(STOP_SCRIPT):
-            logger.error(f"Не найдены скрипты: {MAIN_SCRIPT} или {STOP_SCRIPT}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Скрипты сервиса не найдены!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+            self._show_status("Скрипты сервиса не найдены!", COLOR_RED)
             return
         if not self.strategy_var.get() or not os.path.exists(os.path.join(REPO_DIR, self.strategy_var.get())):
-            logger.error(f"Недействительная стратегия для сервиса: {self.strategy_var.get()}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Выберите действующую стратегию!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+            self._show_status("Выберите стратегию!", COLOR_RED)
             return
         unit_file = f"""[Unit]
 Description=Zapret Discord/YouTube
@@ -508,7 +559,6 @@ User=root
 EnvironmentFile={CONF_FILE}
 ExecStart=/usr/bin/env bash {MAIN_SCRIPT} -nointeractive
 ExecStop=/usr/bin/env bash {STOP_SCRIPT}
-ExecStopPost=/usr/bin/env echo "Сервис завершён"
 StandardOutput=append:/opt/zapretdeck/debug.log
 StandardError=append:/opt/zapretdeck/debug.log
 
@@ -526,171 +576,61 @@ WantedBy=multi-user.target
             subprocess.run(["sudo", "-S", "systemctl", "daemon-reload"], input=password + "\n", text=True, check=True)
         except Exception as e:
             logger.error(f"Ошибка создания сервиса: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка создания сервиса: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+            self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
 
     def toggle_service(self):
-        if self.interface_var.get() == "" or self.strategy_var.get() == "":
-            logger.error(f"Не выбраны интерфейс или стратегия для автозапуска: interface={self.interface_var.get()}, strategy={self.strategy_var.get()}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Выберите интерфейс и стратегию для автозапуска!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+        if not self.interface_var.get() or not self.strategy_var.get():
+            self._show_status("Выберите интерфейс и стратегию!", COLOR_RED)
             self.service_enable_switch.deselect()
-            self.update()
             return
         if self.service_enable_switch.get():
             password = self.ask_sudo_password()
             if not password:
                 self.service_enable_switch.deselect()
-                self.update()
                 return
             try:
                 result = subprocess.run(["systemctl", "cat", "zapret_discord_youtube"], capture_output=True, text=True)
                 if result.returncode != 0 or not os.path.exists(os.path.join(REPO_DIR, self.strategy_var.get())):
                     self.create_systemd_service()
                 subprocess.run(["sudo", "-S", "systemctl", "enable", "--now", "zapret_discord_youtube"], input=password + "\n", text=True, check=True)
-                logger.info("Сервис запущен")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сервис запущен", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.check_session_status()
-                self.update()
+                self._show_status("Сервис запущен", COLOR_GREEN)
             except Exception as e:
                 logger.error(f"Ошибка запуска сервиса: {e}")
                 self.service_enable_switch.deselect()
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка запуска сервиса: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.update()
+                self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
         else:
             password = self.ask_sudo_password()
             if not password:
                 self.service_enable_switch.select()
-                self.update()
                 return
             try:
                 subprocess.run(["sudo", "-S", "systemctl", "disable", "--now", "zapret_discord_youtube"], input=password + "\n", text=True, check=True)
-                logger.info("Сервис остановлен")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сервис остановлен", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.check_session_status()
-                self.update()
+                self._show_status("Сервис остановлен", COLOR_GREEN)
             except Exception as e:
                 logger.error(f"Ошибка остановки сервиса: {e}")
                 self.service_enable_switch.select()
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка остановки сервиса: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.update()
-
-    def toggle_dns(self):
-        if not os.path.exists(DNS_SCRIPT):
-            logger.error(f"Скрипт DNS не найден: {DNS_SCRIPT}")
-            self.dns_switch.deselect()
-            status_label = ctk.CTkLabel(self.main_frame, text="Скрипт DNS не найден!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.update()
-            return
-        if not os.access(DNS_SCRIPT, os.X_OK):
-            logger.error(f"Скрипт DNS не имеет прав на выполнение: {DNS_SCRIPT}")
-            self.dns_switch.deselect()
-            status_label = ctk.CTkLabel(self.main_frame, text="Скрипт DNS не исполняемый!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.update()
-            return
-        password = self.ask_sudo_password()
-        if not password:
-            logger.error("Пароль sudo не предоставлен")
-            if self.dns_switch.get():
-                self.dns_switch.deselect()
-            else:
-                self.dns_switch.select()
-            status_label = ctk.CTkLabel(self.main_frame, text="Пароль sudo не предоставлен!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.update()
-            return
-        try:
-            action = "set" if self.dns_switch.get() else "unset"
-            logger.info(f"Выполнение команды: sudo -S {DNS_SCRIPT} {action}")
-            result = subprocess.run(["sudo", "-S", DNS_SCRIPT, action], input=password + "\n", text=True, capture_output=True, check=True)
-            logger.info(f"DNS {action}: stdout={result.stdout}, stderr={result.stderr}")
-            self.check_dns_status()
-            self.update_config("dns")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"DNS {'включён' if self.dns_switch.get() else 'отключён'}", text_color=COLOR_GREEN, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(2000, status_label.destroy)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Ошибка выполнения DNS-скрипта: {e}, stdout={e.stdout}, stderr={e.stderr}")
-            self.check_dns_status()
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка DNS: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        except Exception as e:
-            logger.error(f"Неизвестная ошибка при выполнении DNS-скрипта: {e}")
-            self.check_dns_status()
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Неизвестная ошибка DNS: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        self.update()
+                self._show_status(f"Ошибка: {str(e)[:50]}...", COLOR_RED)
+        self.check_session_status()
 
     def check_update(self):
         logger.info("Проверка обновлений")
         try:
             response = requests.get("https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/latest", timeout=5)
             response.raise_for_status()
-            latest_version = response.json().get("tag_name", "").lstrip("v")
-            try:
-                parsed_latest = version.parse(latest_version)
-                current_version = self.load_version()
-                parsed_current = version.parse(current_version)
-            except version.InvalidVersion:
-                logger.error(f"Недопустимый формат версии: текущая={current_version}, последняя={latest_version}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Ошибка: неверный формат версии", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.update()
-                return
-            if parsed_latest > parsed_current:
-                logger.info(f"Обнаружена новая версия: {latest_version}, текущая версия: {current_version}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Вышла новая версия, обновитесь!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
+            latest = response.json().get("tag_name", "").lstrip("v")
+            current = self.load_version()
+            if version.parse(latest) > version.parse(current):
+                self._show_status("Вышла новая версия!", COLOR_RED)
             else:
-                logger.info(f"Текущая версия актуальна: {current_version}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Установлена последняя версия", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                logger.error(f"Репозиторий или релизы не найдены: {e}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Репозиторий или релизы недоступны", text_color=COLOR_RED, font=("Inter", 11))
-            else:
-                logger.error(f"Ошибка HTTP при проверке обновления: {e}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Новой версии нет", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Ошибка сети при проверке обновления: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Ошибка сети при проверке обновления", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+                self._show_status("Последняя версия", COLOR_GREEN)
         except Exception as e:
-            logger.error(f"Неизвестная ошибка при проверке обновления: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Неизвестная ошибка", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        self.update()
+            logger.error(f"Ошибка обновления: {e}")
+            self._show_status("Ошибка сети", COLOR_RED)
 
     def on_exit(self):
-        if self.session_button.text == "⏹ Стоп" and not self.service_enable_switch.get():
+        if self.session_button.text == "Стоп" and not self.service_enable_switch.get():
             if messagebox.askyesno("Подтверждение", "Сессия активна. Продолжить в фоне?"):
-                logger.info("Сессия активна, сохраняем её при выходе")
-                self.session_process = None  # Detach process
+                self.session_process = None
             else:
                 password = self.ask_sudo_password()
                 if password:
@@ -699,13 +639,9 @@ WantedBy=multi-user.target
                         subprocess.run(["sudo", "-S", "pkill", "-f", "nfqws"], input=password + "\n", text=True, capture_output=True)
                         if self.session_process:
                             self.session_process.terminate()
-                            try:
-                                self.session_process.wait(timeout=10)
-                            except subprocess.TimeoutExpired:
-                                self.session_process.kill()
-                        logger.info("Сессия остановлена при выходе")
+                            self.session_process.wait(timeout=10)
                     except Exception as e:
-                        logger.error(f"Ошибка остановки сессии при выходе: {e}")
+                        logger.error(f"Ошибка остановки: {e}")
                 self.session_process = None
         self.sudo_password = None
         self.quit()
@@ -715,5 +651,5 @@ if __name__ == "__main__":
         app = ZapretGUI()
         app.mainloop()
     except Exception as e:
-        logger.error(f"Критическая ошибка при запуске приложения: {e}")
+        logger.error(f"Критическая ошибка: {e}")
         raise

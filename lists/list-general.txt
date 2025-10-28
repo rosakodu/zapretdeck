@@ -90,4 +90,8 @@ trycloudflare.com
 videodelivery.net
 warp.plus
 workers.dev
-rule34.xxx
+ubmidrupalcandd.s3-eu-west-1.amazonaws.com
+j2-antiblock.s3-website.eu-west-3.amazonaws.com
+fliba-title.s3-website-eu-west-1.amazonaws.com
+protondb.com
+steamgriddb.com
