@@ -31,9 +31,9 @@ Remote Play и передача файлов не будут работать в
 sudo steamos-readonly disable
 mkdir ~/zapretdeck
 cd ~/zapretdeck
-curl -L -o ZapretDeck_v0.0.4.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v0.0.4/ZapretDeck_v0.0.4.tar.gz
-tar --warning=no-unknown-keyword -xzf ZapretDeck_v0.0.4.tar.gz
-rm ZapretDeck_v0.0.4.tar.gz
+curl -L -o ZapretDeck_v0.0.5.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v0.0.5/ZapretDeck_v0.0.5.tar.gz
+tar --warning=no-unknown-keyword -xzf ZapretDeck_v0.0.5.tar.gz
+rm ZapretDeck_v0.0.5.tar.gz
 cd zapretdeck
 chmod +x install.sh
 ./install.sh
