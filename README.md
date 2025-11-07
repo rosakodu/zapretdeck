@@ -13,11 +13,9 @@ ZapretDeck — простое и удобное приложение для об
 
 **Зависимости**  
 
-# СИСТЕМНЫЕ
-sudo pacman -S --noconfirm bash curl git nftables python3 networkmanager
+Системные: `bash` `nftables` `python3` `curl` `git` `networkmanager`
 
-# PYTHON
-sudo pacman -S --noconfirm python-requests python-packaging
+Python-модули: `requests` `packaging`
 
 **ВАЖНО**  
 Remote Play и передача файлов не будут работать во время работы скрипта.
