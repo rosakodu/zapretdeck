@@ -7,57 +7,36 @@
 ZapretDeck — простое и удобное приложение для обхода сетевых блокировок YouTube, Discord и Decky Loader. Имеет графический интерфейс для управления сетью и DNS.
 
 **Основные возможности**  
-Сети: Выберите Wi-Fi или Ethernet  
-Стратегии: Используйте готовые настройки для обхода  
-Кнопки Пуск/Стоп: Легко включайте или выключайте сессии  
-DNS: Включите или выключите свои DNS  
-Автозапуск: Настройте запуск при включении устройства и в игровом режиме
+Используйте готовые настройки для обхода  
+Можно активировать DNS-XBOX.RU
+Работа в фоновом режиме при включении устройства и в игровом режиме
 
 **Зависимости**  
 
-Системные: `pacman` `bash` `nftables` `python3` `curl` `git` `networkmanager` 
+# СИСТЕМНЫЕ
+sudo pacman -S --noconfirm bash curl git nftables python3 networkmanager
 
-Python-модули: `customtkinter` `requests` `pillow` `packaging` `beautifulsoup`
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/rosakodu/zapretdeck/master/screanshots/screenshot.png" alt="Скриншот ZapretDeck" width="400"/>
-</p>
+# PYTHON
+sudo pacman -S --noconfirm python-requests python-packaging
 
 **ВАЖНО**  
-Remote Play и передача файлов не будут работать во время активации скрипта
+Remote Play и передача файлов не будут работать во время работы скрипта.
 
 Перед установкой создайте sudo пароль:
 ```bash
 passwd
 ```
 
-
-Установка стабильной 0.0.5:  
+Установка стабильной 0.1.0:  
 ```bash
 sudo steamos-readonly disable
 mkdir -p ~/zapretdeck
 cd ~/zapretdeck || exit 1
-curl -L -o ZapretDeck_v0.0.5.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.0.5/ZapretDeck_v0.0.5.tar.gz
-tar -xzf ZapretDeck_v0.0.5.tar.gz
-rm ZapretDeck_v0.0.5.tar.gz
-subdir=$(find . -maxdepth 1 -type d ! -name '.' | head -n 1)
-cd "$subdir" || exit 1
-chmod +x install.sh
-./install.sh
-```
-
-Установка тестовой QT 0.0.6:  
-```bash
-sudo steamos-readonly disable
-mkdir -p ~/zapretdeck
-cd ~/zapretdeck || exit 1
-curl -L -o ZapretDeck_v0.0.6.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.0.6/ZapretDeck_v0.0.6.tar.gz
-tar -xzf ZapretDeck_v0.0.6.tar.gz
-rm ZapretDeck_v0.0.6.tar.gz
-subdir=$(find . -maxdepth 1 -type d ! -name '.' | head -n 1)
-cd "$subdir" || exit 1
-chmod +x install.sh
-./install.sh
+curl -L -o ZapretDeck_v0.1.0.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.0/ZapretDeck_v0.1.0.tar.gz
+tar -xzf ZapretDeck_v0.1.0.tar.gz --strip-components=1
+rm ZapretDeck_v0.1.0.tar.gz
+chmod +x ~/zapretdeck/install.sh
+sudo ~/zapretdeck/install.sh
 ```
 
 
