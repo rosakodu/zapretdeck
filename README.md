@@ -26,6 +26,12 @@ Python-модули: `customtkinter` `requests` `pillow` `packaging` `beautifuls
 **ВАЖНО**  
 Remote Play и передача файлов не будут работать во время активации скрипта
 
+Перед установкой создайте sudo пароль:
+```bash
+passwd
+```
+
+
 Установка стабильной 0.0.5:  
 ```bash
 sudo steamos-readonly disable
@@ -53,3 +59,5 @@ cd "$subdir" || exit 1
 chmod +x install.sh
 ./install.sh
 ```
+
+
