@@ -40,16 +40,14 @@ Remote Play и передача файлов не будут работать в
 passwd
 ```
 
-Установка стабильной 0.1.1:  
-```bash
+Установка последней версии:  
 sudo steamos-readonly disable
 mkdir -p ~/zapretdeck
 cd ~/zapretdeck || exit 1
-curl -L -o ZapretDeck_v0.1.1.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.1/ZapretDeck_v0.1.1.tar.gz
-tar -xzf ZapretDeck_v0.1.1.tar.gz --strip-components=1
-rm ZapretDeck_v0.1.1.tar.gz
+curl -L -o ZapretDeck_v0.1.2.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.2/ZapretDeck_v0.1.2.tar.gz
+tar -xzf ZapretDeck_v0.1.2.tar.gz --strip-components=1
+rm ZapretDeck_v0.1.2.tar.gz
 chmod +x ~/zapretdeck/install.sh
 sudo ~/zapretdeck/install.sh
-```
 
 
