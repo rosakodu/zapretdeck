@@ -41,6 +41,7 @@ passwd
 ```
 
 Установка последней версии:  
+```bash
 sudo steamos-readonly disable
 mkdir -p ~/zapretdeck
 cd ~/zapretdeck || exit 1
@@ -49,5 +50,5 @@ tar -xzf ZapretDeck_v0.1.2.tar.gz --strip-components=1
 rm ZapretDeck_v0.1.2.tar.gz
 chmod +x ~/zapretdeck/install.sh
 sudo ~/zapretdeck/install.sh
-
+```
 
