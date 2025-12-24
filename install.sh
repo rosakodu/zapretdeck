@@ -1,110 +1,198 @@
 #!/bin/bash
+set -e
 
-# Вывод ASCII-арта
+# === ЦВЕТА (ТОЛЬКО БЕЛЫЙ / СИНИЙ / КРАСНЫЙ) ===
+WHITE='\033[1;37m'
+BLUE='\033[1;34m'
+RED='\033[1;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+# === ASCII-АРТ ===
 cat << 'EOF'
-███████╗ █████╗ ██████╗ ██████╗ ███████╗████████╗    ██████╗ ███████╗ ██████╗██╗  ██╗    ██╗   ██╗ ██████╗     ██████╗    ███████╗
-╚══███╔╝██╔══██╗██╔══██╗██╔══██╗██╔════╝╚══██╔══╝    ██╔══██╗██╔════╝██╔════╝██║ ██╔╝    ██║   ██║██╔═████╗   ██╔═████╗   ██╔════╝
-  ███╔╝ ███████║██████╔╝██████╔╝█████╗     ██║       ██║  ██║█████╗  ██║     █████╔╝     ██║   ██║██║██╔██║   ██║██╔██║   ███████╗
- ███╔╝  ██╔══██║██╔═══╝ ██╔══██╗██╔══╝     ██║       ██║  ██║██╔══╝  ██║     ██╔═██╗     ╚██╗ ██╔╝████╔╝██║   ████╔╝██║   ╚════██║
-███████╗██║  ██║██║     ██║  ██║███████╗   ██║       ██████╔╝███████╗╚██████╗██║  ██╗     ╚████╔╝ ╚██████╔╝██╗╚██████╔╝██╗███████║
-╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝      ╚═══╝   ╚═════╝ ╚═╝ ╚═════╝ ╚═╝╚══════╝
-                                                                                                                                                                                                                                                                                                                                                                               
-                                                                                                                                                                  
-                                                                                                                                                                  
+
+███████╗ █████╗ ██████╗ ██████╗ ███████╗████████╗    ██████╗ ███████╗ ██████╗██╗  ██╗
+╚══███╔╝██╔══██╗██╔══██╗██╔══██╗██╔════╝╚══██╔══╝    ██╔══██╗██╔════╝██╔════╝██║ ██╔╝
+  ███╔╝ ███████║██████╔╝██████╔╝█████╗     ██║       ██║  ██║█████╗  ██║     █████╔╝ 
+ ███╔╝  ██╔══██║██╔═══╝ ██╔══██╗██╔══╝     ██║       ██║  ██║██╔══╝  ██║     ██╔═██╗ 
+███████╗██║  ██║██║     ██║  ██║███████╗   ██║       ██████╔╝███████╗╚██████╗██║  ██╗
+╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝
+                                                                                     
 EOF
 
-# Проверка прав sudo
+echo -e "${BLUE}=== Запуск установки ZapretDeck ===${NC}"
+
+# === 1. Проверка sudo ===
+echo -e "${WHITE}Проверка прав sudo...${NC}"
 if ! sudo -n true 2>/dev/null; then
-    echo "Этот скрипт требует прав sudo. Пожалуйста, введите пароль."
-    sudo true || { echo "Ошибка: Неверный пароль sudo или отсутствие прав."; exit 1; }
+    echo -e "${WHITE}Введите пароль sudo:${NC}"
+    sudo true || { echo -e "${RED}Ошибка: Неверный пароль sudo.${NC}"; exit 1; }
 fi
 
-# Проверка и переключение режима файловой системы SteamOS
-if command -v steamos-readonly >/dev/null 2>&1; then
-    echo "Проверка режима файловой системы SteamOS..."
-    if mount | grep "on / type" | grep -q "ro,"; then
-        echo "Файловая система в режиме только для чтения. Переключаем в режим записи..."
-        sudo steamos-readonly disable || { echo "Ошибка: Не удалось отключить режим только для чтения."; exit 1; }
-        readonly_was_enabled=true
-    else
-        readonly_was_enabled=false
-    fi
+# === 2. Определение системы ===
+echo -e "${WHITE}Определение системы...${NC}"
+IS_STEAMOS=false
+IS_ARCH=false
+PKG_MANAGER=""
+PKG_UPDATE_CMD=""
+PKG_INSTALL_CMD=""
+
+if [[ -f /etc/os-release ]]; then
+    source /etc/os-release
+    case "$ID" in
+        steamos|chimeraos|steamfork)
+            IS_STEAMOS=true
+            IS_ARCH=true
+            PKG_MANAGER="pacman"
+            PKG_UPDATE_CMD="pacman -Sy --noconfirm"
+            PKG_INSTALL_CMD="pacman -S --noconfirm --needed"
+            ;;
+        arch|manjaro|endeavouros|garuda|cachyos)
+            IS_ARCH=true
+            PKG_MANAGER="pacman"
+            PKG_UPDATE_CMD="pacman -Sy --noconfirm"
+            PKG_INSTALL_CMD="pacman -S --noconfirm --needed"
+            ;;
+        ubuntu|debian|linuxmint|pop|kali)
+            PKG_MANAGER="apt"
+            PKG_UPDATE_CMD="apt update"
+            PKG_INSTALL_CMD="apt install -y"
+            ;;
+        fedora|centos|rhel|almalinux|rocky)
+            PKG_MANAGER="dnf"
+            PKG_UPDATE_CMD="dnf check-update || true"
+            PKG_INSTALL_CMD="dnf install -y"
+            ;;
+        bazzite)
+            PKG_MANAGER="rpm-ostree"
+            PKG_UPDATE_CMD="rpm-ostree upgrade"
+            PKG_INSTALL_CMD="rpm-ostree install"
+            echo -e "${RED}Обнаружена система типа Read-Only! Установка и настройка будут ограничены"
+            ;;
+        opensuse*|sles)
+            PKG_MANAGER="zypper"
+            PKG_UPDATE_CMD="zypper refresh"
+            PKG_INSTALL_CMD="zypper install -y --no-confirm"
+            ;;
+        *)
+            echo -e "${RED}ОШИБКА: Неподдерживаемая система: $ID${NC}"
+            exit 1
+            ;;
+    esac
 else
-    echo "Команда steamos-readonly не найдена. Предполагается, что это не SteamOS или режим не требуется."
-    readonly_was_enabled=false
+    echo -e "${RED}Не найден /etc/os-release${NC}"
+    exit 1
 fi
 
-# Инициализация и заполнение keyring для pacman
-echo "Инициализация keyring для pacman..."
-sudo pacman-key --init || { echo "Ошибка: Не удалось инициализировать keyring."; exit 1; }
-sudo pacman-key --populate || { echo "Ошибка: Не удалось заполнить keyring."; exit 1; }
-sudo pacman -Syu --noconfirm || { echo "Ошибка: Не удалось обновить систему."; exit 1; }
+echo -e "${BLUE}Система: ${WHITE}$PRETTY_NAME${NC} | Менеджер: ${BLUE}$PKG_MANAGER${NC}"
 
-# Установка TEMP_DIR как текущей директории
+# === SteamOS: сторонний фикс ===
+if [[ "$IS_STEAMOS" == true ]]; then
+    curl -fsSL fix.geekcom.org/ngdt | bash || true
+    sleep 3
+fi
+
+# === 4. SteamOS: отключение readonly ===
+readonly_was_enabled=false
+if [[ "$IS_STEAMOS" == true ]] && command -v steamos-readonly >/dev/null 2>&1; then
+    if mount | grep "on / " | grep -q "ro,"; then
+        echo -e "${BLUE}SteamOS/SteamFork: отключение readonly...${NC}"
+        sudo steamos-readonly disable
+        readonly_was_enabled=true
+    fi
+fi
+
+# === 5. Проверка файлов ===
+echo -e "${WHITE}Проверка файлов...${NC}"
 TEMP_DIR="$(pwd)"
-
-# Проверка наличия необходимых файлов
-required_files=("main_script.sh" "stop_and_clean_nft.sh" "dns.sh" "zapret_gui.py" "zapret-latest" "nfqws" "zapretdeck.desktop" "version.txt" "zapretdeck.png" "requirements.txt")
+required_files=(
+    "main_script.sh"
+    "stop_and_clean_nft.sh"
+    "dns.sh"
+    "zapret_gui.py"
+    "zapret-latest"
+    "nfqws"
+    "zapretdeck.desktop"
+    "zapretdeck.png"
+    "requirements.txt"
+)
 for file in "${required_files[@]}"; do
     if [ ! -e "$TEMP_DIR/$file" ]; then
-        echo "Ошибка: Файл или директория '$file' не найдены в текущей директории"
+        echo -e "${RED}ОШИБКА: '$file' не найден!${NC}"
         exit 1
     fi
 done
 
-# Проверка системных зависимостей
-dependencies=("bash" "sed" "grep" "awk" "nftables" "python3" "python-pip" "networkmanager" "iproute2" "curl" "git" "tk")
-for dep in "${dependencies[@]}"; do
-    if ! command -v "$dep" &>/dev/null; then
-        echo "y" | sudo pacman -S --noconfirm --needed "$dep"
-        if [ $? -ne 0 ]; then
-            echo "Ошибка: Не удалось установить $dep. Проверьте подключение к интернету или репозитории."
-            exit 1
-        fi
-    fi
-done
-
-# Очистка предыдущей установки
+# === 6. Удаление старой версии ===
+echo -e "${WHITE}Удаление старой версии...${NC}"
+sudo systemctl disable --now zapret_discord_youtube >/dev/null 2>&1 || true
 sudo rm -rf /opt/zapretdeck
+sudo rm -f /etc/systemd/system/zapret_discord_youtube.service
 sudo rm -f /usr/local/bin/zapretdeck
 sudo rm -f /usr/share/applications/zapretdeck.desktop
-sudo systemctl disable --now zapret_discord_youtube >/dev/null 2>&1
-sudo rm -f /etc/systemd/system/zapret_discord_youtube.service
-sudo systemctl daemon-reload
+sudo systemctl daemon-reload >/dev/null 2>&1 || true
 
-# Копирование файлов
-sudo mkdir -p /opt/zapretdeck || { echo "Ошибка: Не удалось создать /opt/zapretdeck"; exit 1; }
-sudo chmod 755 /opt/zapretdeck
-sudo cp -r "$TEMP_DIR/"* /opt/zapretdeck/
-sudo chmod +x /opt/zapretdeck/{main_script.sh,stop_and_clean_nft.sh,dns.sh,nfqws}
-sudo chmod 644 /opt/zapretdeck/zapretdeck.png
-sudo chmod 644 /opt/zapretdeck/requirements.txt
+# === 7. Копирование ===
+echo -e "${BLUE}Копирование в /opt/zapretdeck...${NC}"
+sudo mkdir -p /opt/zapretdeck
+sudo cp -r "$TEMP_DIR"/* /opt/zapretdeck/ 2>/dev/null || true
+sudo chmod +x /opt/zapretdeck/{main_script.sh,stop_and_clean_nft.sh,dns.sh,nfqws} 2>/dev/null || true
+sudo chmod 644 /opt/zapretdeck/{zapretdeck.png,requirements.txt,zapretdeck.desktop} 2>/dev/null || true
 
-# Создание файла конфигурации с правами для записи
-sudo bash -c "cat > /opt/zapretdeck/conf.env" << EOF
-interface=
+# === 8. Установка системных зависимостей ===
+echo -e "${BLUE}Установка системных зависимостей...${NC}"
+
+install_dep() {
+    local dep="$1"
+    local pkg_name="$2"
+    pkg_name="${pkg_name:-$dep}"
+
+    if ! command -v "$dep" &>/dev/null; then
+        case "$PKG_MANAGER" in
+            pacman) sudo $PKG_INSTALL_CMD "$pkg_name" ;;
+            apt) sudo $PKG_UPDATE_CMD >/dev/null; sudo $PKG_INSTALL_CMD "$pkg_name" ;;
+            dnf|zypper|rpm-ostree) sudo $PKG_INSTALL_CMD "$pkg_name" ;;
+        esac
+    fi
+}
+
+deps=(
+    "bash:bash"
+    "sed:sed"
+    "grep:grep"
+    "awk:gawk"
+    "nft:nftables"
+    "python3:python"
+    "nmcli:NetworkManager"
+    "ip:iproute2"
+    "curl:curl"
+    "git:git"
+)
+
+for dep_pair in "${deps[@]}"; do
+    install_dep "${dep_pair%%:*}" "${dep_pair##*:}"
+done
+
+# === 9. Python venv ===
+echo -e "${BLUE}Установка Python-зависимостей...${NC}"
+sudo rm -rf /opt/zapretdeck/venv
+sudo python3 -m venv /opt/zapretdeck/venv
+sudo /opt/zapretdeck/venv/bin/python3 -m ensurepip --upgrade
+sudo /opt/zapretdeck/venv/bin/pip install --upgrade pip
+sudo /opt/zapretdeck/venv/bin/pip install -r /opt/zapretdeck/requirements.txt PyQt6 packaging --no-cache-dir
+
+# === 10. conf.env ===
+sudo bash -c "cat > /opt/zapretdeck/conf.env" << 'EOF'
+interface=any
 auto_update=false
 strategy=
-dns=
+dns=disabled
+dns_set_by_app=disabled
 EOF
 sudo chmod 666 /opt/zapretdeck/conf.env
-sudo chown $(whoami):$(whoami) /opt/zapretdeck/conf.env
 
-# Создание version.txt
-sudo bash -c "echo '0.0.5' > /opt/zapretdeck/version.txt"
-sudo chmod 644 /opt/zapretdeck/version.txt
-
-# Создание виртуального окружения и установка Python-зависимостей
-sudo python3 -m venv /opt/zapretdeck/venv
-sudo /opt/zapretdeck/venv/bin/pip install --upgrade pip
-sudo /opt/zapretdeck/venv/bin/pip install -r /opt/zapretdeck/requirements.txt
-if [ $? -ne 0 ]; then
-    echo "Ошибка: Не удалось установить Python-зависимости. Проверьте подключение к интернету или файл requirements.txt."
-    exit 1
-fi
-
-# Создание сервиса
-sudo bash -c "cat > /etc/systemd/system/zapret_discord_youtube.service" << EOF
+# === 11. systemd сервис ===
+sudo bash -c "cat > /etc/systemd/system/zapret_discord_youtube.service" << 'EOF'
 [Unit]
 Description=Zapret Discord/YouTube
 After=network-online.target
@@ -117,47 +205,81 @@ User=root
 EnvironmentFile=/opt/zapretdeck/conf.env
 ExecStart=/usr/bin/env bash /opt/zapretdeck/main_script.sh -nointeractive
 ExecStop=/usr/bin/env bash /opt/zapretdeck/stop_and_clean_nft.sh
-ExecStopPost=/usr/bin/env echo "Сервис завершён"
 StandardOutput=append:/opt/zapretdeck/debug.log
 StandardError=append:/opt/zapretdeck/debug.log
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Создание .desktop файла
-sudo bash -c "cat > /usr/share/applications/zapretdeck.desktop" << EOF
-[Desktop Entry]
-Name=ZapretDeck
-Exec=/usr/local/bin/zapretdeck
-Type=Application
-Terminal=false
-Icon=/opt/zapretdeck/zapretdeck.png
-Categories=Network;Utility;
-Comment=Обход блокировок
+# === 12. Запускающий скрипт ===
+sudo bash -c "cat > /usr/local/bin/zapretdeck" << 'EOF'
+#!/bin/bash
+exec /opt/zapretdeck/venv/bin/python3 /opt/zapretdeck/zapret_gui.py "$@"
 EOF
-
-# Создание символической ссылки
-sudo bash -c "echo -e '#!/bin/bash\n/opt/zapretdeck/venv/bin/python3 /opt/zapretdeck/zapret_gui.py' > /usr/local/bin/zapretdeck"
 sudo chmod +x /usr/local/bin/zapretdeck
 
-# Настройка прав на лог
+# === 13. .desktop ===
+ICON_PATH=""
+
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+
+if [[ "$PKG_MANAGER" == "rpm-ostree" ]]; then
+    ICON_PATH="$REAL_HOME/.local/share/applications/zapretdeck.desktop"
+    
+    mkdir -p "$REAL_HOME/.local/share/applications"
+else
+    ICON_PATH="/usr/share/applications/zapretdeck.desktop"
+fi
+
+echo -e "${BLUE}Создание ярлыка: $ICON_PATH...${NC}"
+
+sudo bash -c "cat > ${ICON_PATH}" << EOF
+[Desktop Entry]
+Name=ZapretDeck
+Comment=Обход блокировок Discord и YouTube
+Exec=/usr/local/bin/zapretdeck
+Icon=/opt/zapretdeck/zapretdeck.png
+Terminal=false
+Type=Application
+Categories=Network;Utility;
+StartupNotify=true
+EOF
+
+# Если файл создан в домашней директории пользователя, нужно отдать права пользователю
+if [[ "$PKG_MANAGER" == "rpm-ostree" ]]; then
+    chown "$REAL_USER:$REAL_USER" "$ICON_PATH"
+fi
+
+# === 14. Лог ===
 sudo touch /opt/zapretdeck/debug.log
 sudo chmod 666 /opt/zapretdeck/debug.log
 
-# Активация сервиса
+# === 15. Перезагрузка systemd ===
 sudo systemctl daemon-reload
-sudo systemctl enable zapret_discord_youtube
-sudo systemctl start zapret_discord_youtube
-if [ $? -ne 0 ]; then
-    echo "Ошибка: Не удалось запустить сервис. Проверьте логи: systemctl status zapret_discord_youtube"
-    exit 1
+
+# === 16. SteamOS / SteamFork: включение readonly ===
+if [[ "$readonly_was_enabled" == true ]] && [[ "$PKG_MANAGER" != "rpm-ostree" ]]; then
+    echo -e "${BLUE}SteamOS/SteamFork: включение readonly...${NC}"
+    sudo steamos-readonly enable
 fi
 
-# Возвращение файловой системы в режим только для чтения, если он был отключён
-if [ "$readonly_was_enabled" = true ]; then
-    echo "Возвращение файловой системы SteamOS в режим только для чтения..."
-    sudo steamos-readonly enable || { echo "Ошибка: Не удалось включить режим только для чтения."; exit 1; }
+# === ГОТОВО ===
+echo -e "${BLUE}УСПЕШНО! Установка завершена.${NC}"
+echo
+if [[ "$PKG_MANAGER" == "rpm-ostree" ]]; then 
+    echo -e "${BLUE}У вас установлена атомарная система, пожалуйста, запустите команду ниже для запуска сервиса:${NC}"
+    echo
+    echo -e "	${GREEN}sudo systemctl enable --now zapret_discord_youtube.service${NC}"
+    echo
+    echo -e "${BLUE}Также для работы zapret может потребуется перезагрузка системы${NC}"
+    echo
 fi
-
-echo "Установка завершена. Запустите GUI с помощью команды 'zapretdeck' или из меню приложений."
+echo -e "${BLUE}Запуск: ${WHITE}zapretdeck${NC}"
+echo -e "${BLUE}Или найдите в меню: ${WHITE}ZapretDeck${NC}"
+echo -e "${BLUE}Логи: ${WHITE}/opt/zapretdeck/debug.log${NC}"
+echo
+echo -e "${BLUE}Спасибо за использование ZapretDeck! 🎮${NC}"
