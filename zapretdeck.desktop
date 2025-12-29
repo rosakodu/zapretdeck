@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Zapret Discord/YouTube
+Exec=/usr/local/bin/zapretdeck
+Type=Application
+Terminal=false
+Icon=/opt/zapretdeck/zapretdeck.png
+Categories=Network;Utility;
+Comment=GUI for managing Zapret Discord/YouTube service
