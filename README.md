@@ -14,7 +14,7 @@ ZapretDeck — простое и удобное приложение для об
 
 • Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager` 
 
-• Python-модули: `customtkinter`, `requests` `pillow` `packaging` `beautifulsoup`
+• Python-модули: `requests` `packaging`
 
 **ВАЖНО**  
 
