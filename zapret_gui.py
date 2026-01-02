@@ -1,719 +1,706 @@
 #!/usr/bin/env python3
 import os
 import subprocess
-import customtkinter as ctk
-from tkinter import Canvas, PhotoImage, messagebox
-import webbrowser
-import time
-import shutil
+import sys
 import logging
-import requests
+import shutil
+import webbrowser
+import threading
 from packaging import version
+import requests
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QComboBox, QPushButton, QFrame, QMessageBox,
+    QInputDialog, QLineEdit, QGridLayout, QScrollArea
+)
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon, QCursor
 
-# Настройка логирования
-logging.basicConfig(filename='/opt/zapretdeck/debug.log', level=logging.INFO, format='%(asctime)s [DEBUG] %(message)s')
-logger = logging.getLogger(__name__)
+# === ПУТИ ===
+if os.path.exists("/opt/zapretdeck") and os.path.isfile("/opt/zapretdeck/zapret_gui.py"):
+    BASE_DIR = "/opt/zapretdeck"
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-REPO_DIR = os.path.join(BASE_DIR, "zapret-latest")
+CUSTOM_STRATEGIES_DIR = os.path.join(BASE_DIR, "custom-strategies")
+LATEST_STRATEGIES_DIR = os.path.join(BASE_DIR, "zapret-latest")
 CONF_FILE = os.path.join(BASE_DIR, "conf.env")
 MAIN_SCRIPT = os.path.join(BASE_DIR, "main_script.sh")
 STOP_SCRIPT = os.path.join(BASE_DIR, "stop_and_clean_nft.sh")
-DNS_SCRIPT = os.path.join(BASE_DIR, "dns.sh")
-VERSION_FILE = os.path.join(BASE_DIR, "version.txt")
+RENAME_SCRIPT = os.path.join(BASE_DIR, "rename_bat.sh")
+SERVICE_SCRIPT = os.path.join(BASE_DIR, "service.sh")
+LOG_FILE = os.path.join(BASE_DIR, "debug.log")
+ICON_PATH = os.path.join(BASE_DIR, "zapretdeck.png")
 
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
+print(f"[ZapretDeck] Базовая директория: {BASE_DIR}")
 
-# Цвета в QT-стиле
-COLOR_BG = "#242424"
-COLOR_ACCENT = "#0078D4"  # QT синий
-COLOR_GREEN = "#107C10"  # QT зелёный
-COLOR_RED = "#C50F1F"  # QT красный
-COLOR_WHITE = "#FFFFFF"
-COLOR_GRAY = "#5C5C5C"
-COLOR_LIGHT_GRAY = "#B3B3B3"
+# === ЛОГИ ===
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    filemode='a'
+)
+logger = logging.getLogger(__name__)
 
-class SudoPasswordDialog(ctk.CTkToplevel):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.title("Пароль sudo")
-        self.geometry("320x180")
-        self.transient(parent)
-        self.configure(fg_color=COLOR_BG)
-        self.password = None
-        title = ctk.CTkLabel(self, text="Введите пароль для sudo:", font=("Inter", 14, "bold"), text_color=COLOR_WHITE)
-        title.pack(pady=10)
-        self.entry = ctk.CTkEntry(self, show="*", width=220, height=30, font=("Inter", 12), fg_color="#333333", border_color=COLOR_ACCENT)
-        self.entry.pack(pady=5)
-        self.entry.focus_set()
-        self.entry.bind("<Return>", lambda event: self.submit())
-        self.bind("<Escape>", lambda event: self.cancel())
-        ok_btn = ctk.CTkButton(self, text="OK", command=self.submit, font=("Inter", 12, "bold"), fg_color=COLOR_ACCENT, height=30)
-        ok_btn.pack(pady=5, side="left", padx=10)
-        cancel_btn = ctk.CTkButton(self, text="Отмена", command=self.cancel, font=("Inter", 12), fg_color=COLOR_GRAY, height=30)
-        cancel_btn.pack(pady=5, side="right", padx=10)
-        self.after(100, self._grab_set_safe)
-    def _grab_set_safe(self):
-        if self.winfo_exists() and self.winfo_viewable():
-            self.grab_set()
-        else:
-            self.after(100, self._grab_set_safe)
-    def submit(self):
-        self.password = self.entry.get()
-        self.grab_release()
-        self.destroy()
-    def cancel(self):
-        self.password = None
-        self.grab_release()
-        self.destroy()
+HIDDEN_STRATEGIES = {"check_updates.bat", "service_install.bat", "service_remove.bat", "service_status.bat"}
+CURRENT_VERSION = "0.1.5"
 
-class RoundButton(Canvas):
-    def __init__(self, parent, text, command, fg_color=COLOR_GREEN, size=150, **kwargs):
-        super().__init__(parent, width=size, height=size, highlightthickness=0, bg=COLOR_BG, **kwargs)
-        self.text = text
-        self.command = command
-        self.fg_color = fg_color
-        self.size = size
-        self.enabled = True
-        self.bind("<Button-1>", self._on_click)
-        self.draw()
-    def draw(self):
-        self.delete("all")
-        if self.enabled:
-            self.create_oval(5, 5, self.size-5, self.size-5, fill=self.fg_color, outline=COLOR_WHITE, width=2)
-            self.create_text(self.size/2, self.size/2, text=self.text, font=("Inter", 22, "bold"), fill=COLOR_WHITE)
-        else:
-            self.create_oval(5, 5, self.size-5, self.size-5, fill=COLOR_GRAY, outline=COLOR_WHITE, width=2)
-            self.create_text(self.size/2, self.size/2, text=self.text, font=("Inter", 22, "bold"), fill=COLOR_LIGHT_GRAY)
-    def configure(self, **kwargs):
-        if "text" in kwargs:
-            self.text = kwargs["text"]
-        if "fg_color" in kwargs:
-            self.fg_color = kwargs["fg_color"]
-        if "state" in kwargs:
-            self.enabled = kwargs["state"] != "disabled"
-        self.draw()
-    def _on_click(self, event):
-        if self.enabled and self.command:
-            self.command()
 
-class ZapretGUI(ctk.CTk):
+# === МОНИТОРИНГ ===
+class StatusChecker(QThread):
+    session_changed = pyqtSignal(bool)
+    service_changed = pyqtSignal(bool)
+
+    def run(self):
+        while True:
+            try:
+                running = subprocess.run(["pgrep", "-f", "nfqws"], capture_output=True).returncode == 0
+                self.session_changed.emit(running)
+
+                enabled = subprocess.run(["systemctl", "is-enabled", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+                active = subprocess.run(["systemctl", "is-active", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+                self.service_changed.emit(enabled and active)
+
+                QThread.msleep(1500)
+            except Exception as e:
+                logger.error(f"StatusChecker error: {e}")
+                QThread.msleep(2000)
+
+
+# === GUI ===
+class ZapretGUI(QMainWindow):
+    status_requested = pyqtSignal(str, str)
+    auto_discovery_done = pyqtSignal(str)
+    set_button_busy = pyqtSignal(bool)
+
     def __init__(self):
         super().__init__()
-        self.title("ZapretDeck")
-        self.geometry("350x430")
-        self.minsize(350, 430)
-        self.maxsize(350, 650)
-        self.session_process = None
+        self.setWindowTitle("ZapretDeck")
+        self.setMinimumSize(800, 600)
+        self.showMaximized()
+
+        if os.path.exists(ICON_PATH):
+            self.setWindowIcon(QIcon(ICON_PATH))
+
         self.sudo_password = None
-        self.configure(fg_color=COLOR_BG)
-        self.warning_label = None  # Persistent warning for missing strategies
-        icon_path = os.path.join(BASE_DIR, "zapretdeck.png")
-        if os.path.exists(icon_path):
-            icon = PhotoImage(file=icon_path)
-            self.wm_iconphoto(True, icon)
-        self.protocol("WM_DELETE_WINDOW", self.on_exit)  # Handle window close
+        self.saved_strategy = ""
+        self.game_filter_enabled = False
+        self.is_running = False
+        self.is_changing_service = False
+        self.is_auto_discovering = False
+        self.loading_dots = 0
+        self.loading_timer = QTimer()
+        self.loading_timer.timeout.connect(self.update_loading_animation)
+
         if not self.check_dependencies():
-            logger.error("Завершение из-за отсутствия зависимостей")
-            self.quit()
-            return
-        # Show loading indicator
-        self.loading_label = ctk.CTkLabel(self, text="Загрузка...", font=("Inter", 12), text_color=COLOR_WHITE)
-        self.loading_label.pack(pady=10)
-        self.update()
-        self.after(100, self.setup_ui)
-        self.after(1000, self.check_session_status)
+            self.show_msg("Ошибка", "Отсутствуют зависимости! Установите: ip, nft, systemctl, pgrep, pkill, nmcli, curl")
+            sys.exit(1)
 
-    def setup_ui(self):
-        self.loading_label.destroy()  # Remove loading label
-        self.main_frame = ctk.CTkFrame(self, corner_radius=10, fg_color=COLOR_BG)
-        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        version = self.load_version()
-        beta_label = ctk.CTkLabel(self.main_frame, text=f"Бета {version}", font=("Inter", 12, "bold"), text_color=COLOR_ACCENT)
-        beta_label.pack(anchor="n", pady=5)
-
-        interface_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        interface_frame.pack(fill="x", padx=5, pady=2)
-        ctk.CTkLabel(interface_frame, text="Сетевой интерфейс:", font=("Inter", 12, "bold"), text_color=COLOR_WHITE).pack(anchor="w", pady=(0, 2))
-        self.interface_var = ctk.StringVar()
-        interfaces = self.get_active_interfaces()
-        self.interface_combo = ctk.CTkComboBox(interface_frame, values=interfaces, variable=self.interface_var,
-                                              state="readonly", font=("Inter", 11), width=220, height=30,
-                                              fg_color="#2E2E2E", button_color=COLOR_ACCENT, border_color=COLOR_ACCENT)
-        self.interface_combo.pack(pady=2)
-        self.interface_combo.bind("<<ComboboxSelected>>", lambda e: self.update_config("interface"))
-
-        strategy_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        strategy_frame.pack(fill="x", padx=5, pady=2)
-        ctk.CTkLabel(strategy_frame, text="Стратегия:", font=("Inter", 12, "bold"), text_color=COLOR_WHITE).pack(anchor="w", pady=(0, 2))
-        self.strategy_var = ctk.StringVar()
-        self.strategy_combo = ctk.CTkComboBox(strategy_frame, variable=self.strategy_var,
-                                              state="readonly", font=("Inter", 11), width=220, height=30,
-                                              fg_color="#2E2E2E", button_color=COLOR_ACCENT, border_color=COLOR_ACCENT)
-        self.strategy_combo.pack(pady=2)
-        self.strategy_combo.bind("<<ComboboxSelected>>", lambda e: self.update_config("strategy"))
-
-        button_container = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        button_container.pack(pady=10)
-        self.session_button = RoundButton(button_container, text="▶ Пуск", command=self.toggle_session,
-                                         fg_color=COLOR_GREEN, size=150)
-        self.session_button.pack()
-
-        switch_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        switch_frame.pack(fill="x", padx=5, pady=2)
-
-        self.service_enable_switch = ctk.CTkSwitch(switch_frame, text="Автозапуск", command=self.toggle_service,
-                                                  font=("Inter", 11), width=220, height=30,
-                                                  progress_color=COLOR_ACCENT)
-        self.service_enable_switch.pack(anchor="w", pady=2)
-
-        self.dns_switch = ctk.CTkSwitch(switch_frame, text="xbox-dns.ru", command=self.toggle_dns,
-                                        font=("Inter", 11), width=220, height=30,
-                                        progress_color=COLOR_ACCENT)
-        self.dns_switch.pack(anchor="w", pady=2)
-
-        button_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        button_frame.pack(fill="x", padx=5, pady=2)
-
-        ctk.CTkButton(button_frame, text="Проверить обновление", command=self.check_update,
-                      font=("Inter", 11), height=30, fg_color="#2E2E2E", border_color=COLOR_ACCENT).pack(fill="x", pady=2)
-        ctk.CTkButton(button_frame, text="ВКонтакте", command=lambda: webbrowser.open("https://vk.com/valvesteamdeck"),
-                      font=("Inter", 11), height=30, fg_color="#2E2E2E", border_color=COLOR_ACCENT).pack(fill="x", pady=2)
-        ctk.CTkButton(button_frame, text="Telegram", command=lambda: webbrowser.open("https://t.me/deckru"),
-                      font=("Inter", 11), height=30, fg_color="#2E2E2E", border_color=COLOR_ACCENT).pack(fill="x", pady=2)
-        ctk.CTkButton(button_frame, text="МАХ", command=lambda: webbrowser.open("https://max.ru/valvesteamdeck"),
-                      font=("Inter", 11), height=30, fg_color="#2E2E2E", border_color=COLOR_ACCENT).pack(fill="x", pady=2)
-
-        exit_btn = ctk.CTkButton(self.main_frame, text="Выход", command=self.on_exit, fg_color=COLOR_RED,
-                                 font=("Inter", 11, "bold"), height=35, border_width=0)
-        exit_btn.pack(pady=5)
-
+        self.init_ui()
         self.load_config()
-        self.check_service_status()
-        self.check_dns_status()
-        self.load_strategies()
-        self.check_session_status()
+        self.start_status_checker()
+        QTimer.singleShot(1000, self.check_for_update)
 
-    def load_version(self):
-        if os.path.exists(VERSION_FILE):
-            with open(VERSION_FILE, "r") as f:
-                return f.read().strip()
-        return "0.0.3"
+        QTimer.singleShot(2000, self.sync_service_button_on_startup)
 
-    def check_dependencies(self):
-        deps = ['ip', 'nft', 'systemctl', 'pgrep', 'pkill', 'bash', 'curl', 'git', 'nmcli']
-        missing = [d for d in deps if shutil.which(d) is None]
-        if missing:
-            logger.error(f"Отсутствуют зависимости: {', '.join(missing)}")
-            return False
+        self.status_requested.connect(self.show_status)
+        self.auto_discovery_done.connect(self.on_auto_success)
+        self.set_button_busy.connect(self.update_button_loading_state)
+
+        self.show_status("Готов к работе!", "#107C10")
+
+    def sync_service_button_on_startup(self):
         try:
-            import requests
-            import packaging.version
-        except ImportError as e:
-            logger.error(f"Отсутствует модуль: {e.name}")
-            return False
-        return True
+            enabled = subprocess.run(["systemctl", "is-enabled", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+            active = subprocess.run(["systemctl", "is-active", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+            real_state = enabled and active
 
-    def get_active_interfaces(self):
-        try:
-            result = subprocess.run(['ip', 'link', 'show', 'up'], capture_output=True, text=True)
-            interfaces = [line.split(':')[1].strip() for line in result.stdout.splitlines() if ':' in line and 'state UP' in line]
-            return [i for i in interfaces if i != 'lo'] + ['any']
-        except Exception as e:
-            logger.error(f"Ошибка получения интерфейсов: {e}")
-            return ['any']
-
-    def check_session_status(self):
-        try:
-            result = subprocess.run(["pgrep", "-f", "nfqws"], capture_output=True, text=True)
-            is_running = result.returncode == 0
-            if is_running and self.session_button.text != "⏹ Стоп":
-                logger.info("Обнаружены процессы nfqws, синхронизация состояния кнопки")
-                self.session_button.configure(text="⏹ Стоп", fg_color=COLOR_RED)
-            elif not is_running and self.session_button.text != "▶ Пуск":
-                logger.info("Процессы nfqws не найдены, завершение сессии")
-                self.session_process = None
-                self.session_button.configure(text="▶ Пуск", fg_color=COLOR_GREEN)
-            self.after(1000, self.check_session_status)
-        except Exception as e:
-            logger.error(f"Ошибка проверки статуса сессии: {e}")
-
-    def check_service_status(self):
-        try:
-            result = subprocess.run(["systemctl", "is-enabled", "zapret_discord_youtube"], capture_output=True, text=True)
-            is_active = subprocess.run(["systemctl", "is-active", "zapret_discord_youtube"], capture_output=True, text=True).stdout.strip() == "active"
-            if result.stdout.strip() == "enabled" and is_active:
-                self.service_enable_switch.select()
+            if self.service_btn.isChecked() != real_state:
+                logger.info(f"Синхронизация кнопки 'Работа в фоне': было {'включено' if self.service_btn.isChecked() else 'выключено'} → стало {'включено' if real_state else 'выключено'}")
+                self.service_btn.blockSignals(True)
+                self.service_btn.setChecked(real_state)
+                self.service_btn.blockSignals(False)
             else:
-                self.service_enable_switch.deselect()
-                if result.stdout.strip() == "enabled" and not is_active:
-                    password = self.ask_sudo_password()
-                    if password:
-                        subprocess.run(["sudo", "-S", "systemctl", "disable", "zapret_discord_youtube"], input=password + "\n", text=True)
-                        logger.info("Сервис отключен из-за неактивности")
-                        status_label = ctk.CTkLabel(self.main_frame, text="Сервис отключен: неактивен", text_color=COLOR_RED, font=("Inter", 11))
-                        status_label.pack(pady=2)
-                        self.after(3000, status_label.destroy)
+                logger.info(f"Кнопка 'Работа в фоне' уже в правильном состоянии: {'включено' if real_state else 'выключено'}")
         except Exception as e:
-            logger.error(f"Ошибка проверки статуса сервиса: {e}")
+            logger.error(f"Ошибка синхронизации кнопки сервиса при запуске: {e}")
 
-    def check_dns_status(self):
-        try:
-            if os.path.exists("/etc/resolv.conf") and "Generated by NetworkManager" in subprocess.run(["cat", "/etc/resolv.conf"], capture_output=True, text=True).stdout:
-                if shutil.which("nmcli"):
-                    result = subprocess.run(["nmcli", "con", "show", "--active"], capture_output=True, text=True)
-                    active_con = [line for line in result.stdout.splitlines() if "NAME" not in line]
-                    if active_con:
-                        con_name = active_con[0].split()[0]
-                        dns_result = subprocess.run(["nmcli", "con", "show", con_name], capture_output=True, text=True)
-                        dns_list = [line for line in dns_result.stdout.splitlines() if "ipv4.dns" in line]
-                        if dns_list and any(dns in dns_list[0] for dns in ["176.99.11.77", "80.78.247.254"]):
-                            self.dns_switch.select()
-                            logger.info("DNS активен через NetworkManager")
-                            return
-            result = subprocess.run(["grep", "-E", "176.99.11.77|80.78.247.254", "/etc/resolv.conf"], capture_output=True, text=True)
-            if result.returncode == 0:
-                self.dns_switch.select()
-                logger.info("DNS активен в /etc/resolv.conf")
-            else:
-                self.dns_switch.deselect()
-                logger.info("DNS не активен")
-        except Exception as e:
-            logger.error(f"Ошибка проверки статуса DNS: {e}")
-            self.dns_switch.deselect()
-
-    def load_config(self):
-        if not os.path.exists(CONF_FILE):
-            self.interface_var.set("any")
-            self.strategy_var.set("")
-            self.dns_switch.deselect()
-            self.update_config("initial")
+    def update_button_loading_state(self, is_busy):
+        if is_busy:
+            self.start_btn.setEnabled(False)
+            self.start_btn.setText("ИДЁТ АВТОПОДБОР...")
+            self.start_btn.setStyleSheet("""
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #FF8C00, stop:1 #FF4500);
+                    color: white; 
+                    font-weight: bold;
+                    font-size: 20px;
+                    border-radius: 12px;
+                    border: none;
+                }
+            """)
         else:
-            try:
-                with open(CONF_FILE, "r") as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        line = line.strip()
-                        if line.startswith("interface="):
-                            interface = line.split("=", 1)[1]
-                            self.interface_var.set(interface)
-                        elif line.startswith("strategy="):
-                            strategy = line.split("=", 1)[1]
-                            self.strategy_var.set(strategy)
-                        elif line.startswith("dns="):
-                            dns_state = line.split("=", 1)[1]
-                            if dns_state == "enabled":
-                                self.dns_switch.select()
-                            elif dns_state == "disabled":
-                                self.dns_switch.deselect()
-            except Exception as e:
-                logger.error(f"Ошибка при чтении {CONF_FILE}: {e}")
-        if not self.interface_var.get() and self.interface_combo.cget("values"):
-            self.interface_var.set('any')
-            self.update_config("interface")
-        self.check_dns_status()
+            self.start_btn.setEnabled(True)
+            self.start_btn.setStyleSheet("")
+            self.apply_session_style(self.is_running)
 
-    def load_strategies(self):
-        logger.info(f"Загрузка стратегий из {REPO_DIR}")
-        if self.warning_label:
-            self.warning_label.destroy()
-            self.warning_label = None
-        if not os.path.exists(REPO_DIR):
-            logger.error(f"Каталог {REPO_DIR} не найден")
-            self.warning_label = ctk.CTkLabel(self.main_frame, text="Каталог zapret-latest не найден!", text_color=COLOR_RED, font=("Inter", 11))
-            self.warning_label.pack(pady=2)
-            self.strategy_combo.configure(values=[])
-            self.strategy_var.set("")
-            self.session_button.configure(state="disabled")
-            self.service_enable_switch.configure(state="disabled")
-            self.update_config("strategy")
+    def on_auto_success(self, filename):
+        self.set_button_busy.emit(False)
+        
+        if os.path.exists(os.path.join(CUSTOM_STRATEGIES_DIR, filename)):
+            self.strategy_combo.setCurrentText(filename)
+        self.run_main_script(self.sudo_password)
+
+    def init_ui(self):
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        container = QWidget()
+        scroll.setWidget(container)
+        self.setCentralWidget(scroll)
+
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        top = QFrame()
+        top.setProperty("class", "card")
+        top.setMinimumHeight(120)
+        top_layout = QVBoxLayout(top)
+        top_layout.setContentsMargins(16, 16, 16, 16)
+
+        self.version_label = QLabel(f"v{CURRENT_VERSION}")
+        self.version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.version_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #107C10;")
+        top_layout.addWidget(self.version_label)
+
+        combo_frame = self.create_labeled_combo("Текущий обход блокировок:", [], "")
+        self.strategy_combo = combo_frame.findChild(QComboBox)
+        self.strategy_combo.setObjectName("strategy_combo")
+        self.strategy_combo.currentTextChanged.connect(self.on_strategy_changed)
+        top_layout.addWidget(combo_frame)
+
+        layout.addWidget(top)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setFrameShadow(QFrame.Shadow.Sunken)
+        sep.setMinimumHeight(1)
+        layout.addWidget(sep)
+
+        tiles_frame = QFrame()
+        tiles_frame.setObjectName("tiles_panel")
+        tiles_layout = QHBoxLayout(tiles_frame)
+        tiles_layout.setSpacing(4)
+        tiles_layout.setContentsMargins(0, 0, 0, 0)
+
+        tile_style = """
+            QPushButton {
+                background-color: #333333;
+                color: #e0e0e0;
+                border: 1px solid #444;
+                border-radius: 6px;
+                padding: 14px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:checked {
+                background-color: #107C10;
+                color: white;
+                border: 1px solid #107C10;
+            }
+            QPushButton:hover {
+                background-color: #444444;
+            }
+        """
+
+        self.service_btn = QPushButton("Работа в фоне")
+        self.service_btn.setCheckable(True)
+        self.service_btn.setStyleSheet(tile_style)
+        self.service_btn.clicked.connect(self.toggle_service_tile)
+
+        self.game_filter_btn = QPushButton("Игровой фильтр")
+        self.game_filter_btn.setCheckable(True)
+        self.game_filter_btn.setStyleSheet(tile_style)
+        self.game_filter_btn.clicked.connect(self.toggle_game_filter_tile)
+
+        tiles_layout.addWidget(self.service_btn, 1)
+        tiles_layout.addWidget(self.game_filter_btn, 1)
+
+        layout.addWidget(tiles_frame)
+
+        self.start_btn = QPushButton("ПУСК")
+        self.start_btn.setMinimumHeight(64)
+        self.start_btn.clicked.connect(self.start_zapret)
+        self.apply_session_style(False)
+        layout.addWidget(self.start_btn)
+
+        actions_card = QFrame()
+        actions_card.setProperty("class", "card")
+        actions_layout = QGridLayout(actions_card)
+        actions_layout.setContentsMargins(16, 16, 16, 16)
+        actions_layout.setSpacing(12)
+
+        actions = [
+            ("ВКонтакте", "https://vk.com/valvesteamdeck"),
+            ("Telegram", "https://t.me/deckru"),
+            ("Поддержать автора", "https://vk.com/valvesteamdeck?w=donut_payment-199643211&levelId=1669"),
+            ("MAX", "https://max.ru/valvesteamdeck"),
+        ]
+        for i, (text, url) in enumerate(actions):
+            btn = QPushButton(text)
+            btn.setObjectName("actionButton")
+            btn.setMinimumHeight(44)
+            btn.clicked.connect(lambda _, u=url: webbrowser.open(u))
+            actions_layout.addWidget(btn, i // 2, i % 2)
+
+        layout.addWidget(actions_card)
+
+        exit_btn = QPushButton("Выход")
+        exit_btn.setObjectName("exitButton")
+        exit_btn.setMinimumHeight(56)
+        exit_btn.clicked.connect(self.close)
+        layout.addWidget(exit_btn)
+
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setStyleSheet("font-size: 14px;")
+        self.status_label.setMinimumHeight(30)
+        layout.addWidget(self.status_label)
+
+        self.update_label = QLabel("")
+        self.update_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.update_label.setStyleSheet("color: #ff6b6b; font-weight: bold; font-size: 14px;")
+        self.update_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.update_label.mousePressEvent = lambda e: webbrowser.open("https://github.com/rosakodu/zapretdeck/releases/latest")
+        self.update_label.setMinimumHeight(30)
+        layout.addWidget(self.update_label)
+
+        layout.addStretch()
+
+    def apply_session_style(self, running):
+        if self.loading_timer.isActive() or getattr(self, 'is_auto_discovering', False):
             return
-        try:
-            strategies = [f for f in os.listdir(REPO_DIR) if f.endswith(".bat") and os.access(os.path.join(REPO_DIR, f), os.R_OK)]
-            logger.info(f"Все файлы в {REPO_DIR}: {os.listdir(REPO_DIR)}")
-            logger.info(f"Найдены доступные .bat файлы: {strategies}")
-            if not strategies:
-                logger.error(f"Не найдены .bat файлы в {REPO_DIR}")
-                self.warning_label = ctk.CTkLabel(self.main_frame, text="Файлы стратегий не найдены!", text_color=COLOR_RED, font=("Inter", 11))
-                self.warning_label.pack(pady=2)
-                self.strategy_combo.configure(values=[])
-                self.strategy_var.set("")
-                self.session_button.configure(state="disabled")
-                self.service_enable_switch.configure(state="disabled")
-            else:
-                self.strategy_combo.configure(values=strategies)
-                self.strategy_combo.update()  # Force GUI update
-                if not self.strategy_var.get() or self.strategy_var.get() not in strategies:
-                    self.strategy_var.set(strategies[0])
-                    logger.info(f"Установлена стратегия по умолчанию: {self.strategy_var.get()}")
-                self.session_button.configure(state="normal")
-                self.service_enable_switch.configure(state="normal")
-            self.update_config("strategy")
-        except Exception as e:
-            logger.error(f"Ошибка загрузки стратегий: {e}")
-            self.warning_label = ctk.CTkLabel(self.main_frame, text="Ошибка загрузки стратегий!", text_color=COLOR_RED, font=("Inter", 11))
-            self.warning_label.pack(pady=2)
-            self.after(3000, self.warning_label.destroy)
+        text = "СТОП" if running else "ПУСК"
+        grad = "qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #E53935,stop:1 #B71C1C)" if running else "qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #4CAF50,stop:1 #2E7D32)"
+        self.start_btn.setText(text)
+        self.start_btn.setStyleSheet(f"color:#fff; background:{grad}; border-radius:12px; font-weight:bold; font-size:20px;")
 
-    def update_config(self, source="unknown"):
-        interface = self.interface_var.get() or "any"
-        strategy = self.strategy_var.get() or ""
-        auto_update = "false"
-        dns_state = "enabled" if self.dns_switch.get() else "disabled"
-        logger.info(f"update_config от {source}: interface='{interface}', strategy='{strategy}', auto_update={auto_update}, dns={dns_state}")
+    def start_loading_animation(self, action: str):
+        self.loading_dots = 0
+        base = "ЗАПУСК" if action == "start" else "ОСТАНОВКА"
+        self.start_btn.setText(f"{base}...")
+        self.start_btn.setEnabled(False)
+        self.loading_timer.start(500)
+
+    def update_loading_animation(self):
+        self.loading_dots = (self.loading_dots + 1) % 4
+        dots = "." * self.loading_dots
+        current = self.start_btn.text().rstrip(".")
+        self.start_btn.setText(f"{current}{dots}")
+
+    def stop_loading_animation(self):
+        self.loading_timer.stop()
+        self.start_btn.setEnabled(True)
+        self.apply_session_style(self.is_running)
+
+    def start_zapret(self):
+        if self.loading_timer.isActive():
+            return
+
         try:
-            with open(CONF_FILE, "w") as f:
-                f.write(f"interface={interface}\n")
-                f.write(f"auto_update={auto_update}\n")
-                f.write(f"strategy={strategy}\n")
-                f.write(f"dns={dns_state}\n")
-            logger.info(f"conf.env создан/обновлён: {CONF_FILE}")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Конфигурация сохранена ({source})", text_color=COLOR_GREEN, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(2000, status_label.destroy)
+            enabled = subprocess.run(["systemctl", "is-enabled", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+            active = subprocess.run(["systemctl", "is-active", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+            service_running = enabled and active
+        except:
+            service_running = False
+
+        if service_running:
+            self.show_status("Уже работает в фоне!", "#107C10")
+            return
+
+        password = self.ask_sudo_password()
+        if not password:
+            return
+
+        current_strat = self.strategy_combo.currentText()
+
+        if self.is_running:
+            self.start_loading_animation("stop")
+            QTimer.singleShot(100, lambda: self.stop_session(password))
+            return
+
+        if not current_strat:
+            self.show_status("Выбери стратегию!", "#ff6b6b")
+            return
+
+        if current_strat == "Автоподбор":
+            threading.Thread(target=self.run_auto_discovery, args=(password,), daemon=True).start()
+        else:
+            self.run_main_script(password)
+
+    def run_auto_discovery(self, password):
+        self.is_auto_discovering = True
+        self.set_button_busy.emit(True)
+        self.status_requested.emit("Подбор стратегии... (ждите)", "#FF8C00")
+
+        try:
+            result = subprocess.run(
+                ["sudo", "-S", "bash", MAIN_SCRIPT, "auto"],
+                input=password + "\n",
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                self.status_requested.emit("Стратегия подобрана!", "#107C10")
+                self.auto_discovery_done.emit("auto_found.bat")
+            else:
+                self.status_requested.emit("Автоподбор не удался", "#ff6b6b")
+                
         except Exception as e:
-            logger.error(f"Ошибка записи {CONF_FILE}: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
+            logger.error(f"Ошибка при автоподборе: {e}")
+            self.status_requested.emit(f"Ошибка: {str(e)}", "#ff6b6b")
+        
+        finally:
+            self.is_auto_discovering = False
+            self.set_button_busy.emit(False)
+
+    def on_session_changed(self, running):
+        self.is_running = running
+        if getattr(self, 'is_auto_discovering', False):
+            return
+            
+        self.stop_loading_animation()
+        self.apply_session_style(running)
+
+    def run_main_script(self, password):
+        try:
+            subprocess.run(
+                ["sudo", "-S", "bash", STOP_SCRIPT],
+                input=password + "\n", text=True, check=False, timeout=10
+            )
+        except:
+            pass
+
+        self.update_config("silent")
+        self.start_loading_animation("start")
+
+        try:
+            proc = subprocess.Popen(
+                ["sudo", "-S", "bash", MAIN_SCRIPT],
+                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True
+            )
+            proc.stdin.write(password + "\n")
+            proc.stdin.flush()
+        except Exception as e:
+            logger.error(f"Ошибка запуска main_script: {e}")
+            self.show_status("Ошибка запуска", "#ff6b6b")
+            self.stop_loading_animation()
+
+    def stop_session(self, password):
+        try:
+            subprocess.run(
+                ["sudo", "-S", "bash", STOP_SCRIPT],
+                input=password + "\n", text=True, check=True, timeout=15
+            )
+            self.show_status("Остановлено", "#107C10")
+        except Exception as e:
+            logger.error(f"Stop error: {e}")
+            self.show_status("Ошибка остановки", "#ff6b6b")
+        finally:
+            self.stop_loading_animation()
 
     def ask_sudo_password(self):
         if self.sudo_password:
             return self.sudo_password
-        dialog = SudoPasswordDialog(self)
-        self.wait_window(dialog)
-        self.sudo_password = dialog.password
-        return self.sudo_password
 
-    def toggle_session(self):
-        self.session_button.configure(state="disabled")
-        self.update()
-        if self.session_button.text == "▶ Пуск":
-            self.load_strategies()
-            if self.interface_var.get() == "" or self.strategy_var.get() == "":
-                logger.error(f"Не выбраны интерфейс или стратегия: interface={self.interface_var.get()}, strategy={self.strategy_var.get()}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Выберите интерфейс и стратегию!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.session_button.configure(state="normal")
-                self.update()
-                return
-            if not os.path.exists(MAIN_SCRIPT):
-                logger.error(f"Скрипт не найден: {MAIN_SCRIPT}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Скрипт сессии не найден!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.session_button.configure(state="normal")
-                self.update()
-                return
-            if not os.path.exists(os.path.join(REPO_DIR, self.strategy_var.get())):
-                logger.error(f"Файл стратегии не найден: {self.strategy_var.get()}")
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Файл стратегии {self.strategy_var.get()} не найден!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.session_button.configure(state="normal")
-                self.update()
-                return
-            password = self.ask_sudo_password()
-            if not password:
-                logger.error("Пароль sudo не предоставлен")
-                self.session_button.configure(state="normal")
-                self.update()
-                return
-            try:
-                subprocess.run(["sudo", "-S", "pkill", "-f", "nfqws"], input=password + "\n", text=True, capture_output=True)
-                if os.path.exists(STOP_SCRIPT):
-                    subprocess.run(["sudo", "-S", STOP_SCRIPT], input=password + "\n", text=True, capture_output=True)
-                self.session_process = subprocess.Popen(
-                    ["sudo", "-S", MAIN_SCRIPT, "-nointeractive"],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                )
-                self.session_process.stdin.write(password + "\n")
-                self.session_process.stdin.flush()
-                time.sleep(1)
-                logger.info(f"Сессия запущена с interface={self.interface_var.get()}, strategy={self.strategy_var.get()}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сессия запущена", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.session_button.configure(text="⏹ Стоп", fg_color=COLOR_RED, state="normal")
-                self.update()
-            except Exception as e:
-                logger.error(f"Ошибка запуска сессии: {e}")
-                self.session_process = None
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка запуска сессии: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.session_button.configure(state="normal")
-                self.update()
-        else:
-            password = self.ask_sudo_password()
-            if not password:
-                self.session_button.configure(state="normal")
-                self.update()
-                return
-            try:
-                subprocess.run(["sudo", "-S", "nft", "flush", "ruleset"], input=password + "\n", text=True, capture_output=True, check=True)
-                subprocess.run(["sudo", "-S", "pkill", "-f", "nfqws"], input=password + "\n", text=True, capture_output=True)
-                if self.session_process:
-                    self.session_process.terminate()
-                    try:
-                        self.session_process.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        self.session_process.kill()
-                self.session_process = None
-                time.sleep(1)
-                logger.info("Сессия остановлена")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сессия остановлена", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.session_button.configure(text="▶ Пуск", fg_color=COLOR_GREEN, state="normal")
-                self.update()
-            except Exception as e:
-                logger.error(f"Ошибка остановки сессии: {e}")
-                self.session_process = None
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка остановки сессии: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.session_button.configure(text="▶ Пуск", fg_color=COLOR_GREEN, state="normal")
-                self.update()
-        self.check_session_status()
+        text, ok = QInputDialog.getText(
+            self, "Авторизация", "Введите пароль sudo:",
+            QLineEdit.EchoMode.Password
+        )
 
-    def create_systemd_service(self):
-        if not os.path.exists(MAIN_SCRIPT) or not os.path.exists(STOP_SCRIPT):
-            logger.error(f"Не найдены скрипты: {MAIN_SCRIPT} или {STOP_SCRIPT}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Скрипты сервиса не найдены!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            return
-        if not self.strategy_var.get() or not os.path.exists(os.path.join(REPO_DIR, self.strategy_var.get())):
-            logger.error(f"Недействительная стратегия для сервиса: {self.strategy_var.get()}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Выберите действующую стратегию!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            return
-        unit_file = f"""[Unit]
-Description=Zapret Discord/YouTube
-After=network-online.target
-Wants=network-online.target
+        if ok and text:
+            res = subprocess.run(["sudo", "-S", "true"], input=text + "\n", text=True, capture_output=True)
+            if res.returncode == 0:
+                self.sudo_password = text
+                return text
+            else:
+                self.show_status("Неверный пароль", "#ff6b6b")
+        return None
 
-[Service]
-Type=simple
-WorkingDirectory={BASE_DIR}
-User=root
-EnvironmentFile={CONF_FILE}
-ExecStart=/usr/bin/env bash {MAIN_SCRIPT} -nointeractive
-ExecStop=/usr/bin/env bash {STOP_SCRIPT}
-ExecStopPost=/usr/bin/env echo "Сервис завершён"
-StandardOutput=append:/opt/zapretdeck/debug.log
-StandardError=append:/opt/zapretdeck/debug.log
+    def show_status(self, text, color="#107C10"):
+        self.status_label.setText(text)
+        self.status_label.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 14px;")
 
-[Install]
-WantedBy=multi-user.target
-"""
-        try:
-            tmp_path = "/tmp/zapret_discord_youtube.service"
-            with open(tmp_path, "w") as f:
-                f.write(unit_file)
-            password = self.ask_sudo_password()
-            if not password:
-                return
-            subprocess.run(["sudo", "-S", "mv", tmp_path, "/etc/systemd/system/zapret_discord_youtube.service"], input=password + "\n", text=True, check=True)
-            subprocess.run(["sudo", "-S", "systemctl", "daemon-reload"], input=password + "\n", text=True, check=True)
-        except Exception as e:
-            logger.error(f"Ошибка создания сервиса: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка создания сервиса: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-
-    def toggle_service(self):
-        if self.interface_var.get() == "" or self.strategy_var.get() == "":
-            logger.error(f"Не выбраны интерфейс или стратегия для автозапуска: interface={self.interface_var.get()}, strategy={self.strategy_var.get()}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Выберите интерфейс и стратегию для автозапуска!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.service_enable_switch.deselect()
-            self.update()
-            return
-        if self.service_enable_switch.get():
-            password = self.ask_sudo_password()
-            if not password:
-                self.service_enable_switch.deselect()
-                self.update()
-                return
-            try:
-                result = subprocess.run(["systemctl", "cat", "zapret_discord_youtube"], capture_output=True, text=True)
-                if result.returncode != 0 or not os.path.exists(os.path.join(REPO_DIR, self.strategy_var.get())):
-                    self.create_systemd_service()
-                subprocess.run(["sudo", "-S", "systemctl", "enable", "--now", "zapret_discord_youtube"], input=password + "\n", text=True, check=True)
-                logger.info("Сервис запущен")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сервис запущен", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.check_session_status()
-                self.update()
-            except Exception as e:
-                logger.error(f"Ошибка запуска сервиса: {e}")
-                self.service_enable_switch.deselect()
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка запуска сервиса: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.update()
-        else:
-            password = self.ask_sudo_password()
-            if not password:
-                self.service_enable_switch.select()
-                self.update()
-                return
-            try:
-                subprocess.run(["sudo", "-S", "systemctl", "disable", "--now", "zapret_discord_youtube"], input=password + "\n", text=True, check=True)
-                logger.info("Сервис остановлен")
-                status_label = ctk.CTkLabel(self.main_frame, text="Сервис остановлен", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-                self.check_session_status()
-                self.update()
-            except Exception as e:
-                logger.error(f"Ошибка остановки сервиса: {e}")
-                self.service_enable_switch.select()
-                status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка остановки сервиса: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.update()
-
-    def toggle_dns(self):
-        if not os.path.exists(DNS_SCRIPT):
-            logger.error(f"Скрипт DNS не найден: {DNS_SCRIPT}")
-            self.dns_switch.deselect()
-            status_label = ctk.CTkLabel(self.main_frame, text="Скрипт DNS не найден!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.update()
-            return
-        if not os.access(DNS_SCRIPT, os.X_OK):
-            logger.error(f"Скрипт DNS не имеет прав на выполнение: {DNS_SCRIPT}")
-            self.dns_switch.deselect()
-            status_label = ctk.CTkLabel(self.main_frame, text="Скрипт DNS не исполняемый!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.update()
-            return
+    def toggle_service_tile(self):
         password = self.ask_sudo_password()
         if not password:
-            logger.error("Пароль sudo не предоставлен")
-            if self.dns_switch.get():
-                self.dns_switch.deselect()
-            else:
-                self.dns_switch.select()
-            status_label = ctk.CTkLabel(self.main_frame, text="Пароль sudo не предоставлен!", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-            self.update()
             return
-        try:
-            action = "set" if self.dns_switch.get() else "unset"
-            logger.info(f"Выполнение команды: sudo -S {DNS_SCRIPT} {action}")
-            result = subprocess.run(["sudo", "-S", DNS_SCRIPT, action], input=password + "\n", text=True, capture_output=True, check=True)
-            logger.info(f"DNS {action}: stdout={result.stdout}, stderr={result.stderr}")
-            self.check_dns_status()
-            self.update_config("dns")
-            status_label = ctk.CTkLabel(self.main_frame, text=f"DNS {'включён' if self.dns_switch.get() else 'отключён'}", text_color=COLOR_GREEN, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(2000, status_label.destroy)
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Ошибка выполнения DNS-скрипта: {e}, stdout={e.stdout}, stderr={e.stderr}")
-            self.check_dns_status()
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Ошибка DNS: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        except Exception as e:
-            logger.error(f"Неизвестная ошибка при выполнении DNS-скрипта: {e}")
-            self.check_dns_status()
-            status_label = ctk.CTkLabel(self.main_frame, text=f"Неизвестная ошибка DNS: {str(e)[:50]}...", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        self.update()
 
-    def check_update(self):
-        logger.info("Проверка обновлений")
+        self.is_changing_service = True
+        self.service_btn.setEnabled(False)
+        self.show_status("Проверка состояния сервиса...", "#FF8C00")
+
         try:
-            response = requests.get("https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/latest", timeout=5)
-            response.raise_for_status()
-            latest_version = response.json().get("tag_name", "").lstrip("v")
-            try:
-                parsed_latest = version.parse(latest_version)
-                current_version = self.load_version()
-                parsed_current = version.parse(current_version)
-            except version.InvalidVersion:
-                logger.error(f"Недопустимый формат версии: текущая={current_version}, последняя={latest_version}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Ошибка: неверный формат версии", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-                self.update()
+            enabled = subprocess.run(["systemctl", "is-enabled", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+            active = subprocess.run(["systemctl", "is-active", "--quiet", "zapretdeck.service"], check=False).returncode == 0
+            currently_running = enabled and active
+
+            target_state = not currently_running
+            action = "install" if target_state else "remove"
+
+            self.show_status(f"{'Включение' if target_state else 'Выключение'} фонового режима...", "#FF8C00")
+
+            res = subprocess.run(
+                ["sudo", "-S", "bash", SERVICE_SCRIPT, action],
+                input=password + "\n",
+                text=True,
+                capture_output=True,
+                timeout=40
+            )
+
+            if res.returncode != 0:
+                error_msg = res.stderr.strip()[:150]
+                logger.error(f"Service {action} failed: {error_msg}")
+                self.show_status(f"Ошибка сервиса: {error_msg or 'команда не удалась'}", "#ff6b6b")
+                self.service_btn.setEnabled(True)
+                self.is_changing_service = False
                 return
-            if parsed_latest > parsed_current:
-                logger.info(f"Обнаружена новая версия: {latest_version}, текущая версия: {current_version}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Вышла новая версия, обновитесь!", text_color=COLOR_RED, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(3000, status_label.destroy)
-            else:
-                logger.info(f"Текущая версия актуальна: {current_version}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Установлена последняя версия", text_color=COLOR_GREEN, font=("Inter", 11))
-                status_label.pack(pady=2)
-                self.after(2000, status_label.destroy)
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                logger.error(f"Репозиторий или релизы не найдены: {e}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Репозиторий или релизы недоступны", text_color=COLOR_RED, font=("Inter", 11))
-            else:
-                logger.error(f"Ошибка HTTP при проверке обновления: {e}")
-                status_label = ctk.CTkLabel(self.main_frame, text="Новой версии нет", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Ошибка сети при проверке обновления: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Ошибка сети при проверке обновления", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        except Exception as e:
-            logger.error(f"Неизвестная ошибка при проверке обновления: {e}")
-            status_label = ctk.CTkLabel(self.main_frame, text="Неизвестная ошибка", text_color=COLOR_RED, font=("Inter", 11))
-            status_label.pack(pady=2)
-            self.after(3000, status_label.destroy)
-        self.update()
 
-    def on_exit(self):
-        if self.session_button.text == "⏹ Стоп" and not self.service_enable_switch.get():
-            if messagebox.askyesno("Подтверждение", "Сессия активна. Продолжить в фоне?"):
-                logger.info("Сессия активна, сохраняем её при выходе")
-                self.session_process = None  # Detach process
+            if target_state:
+                self.show_status("Запуск сервиса...", "#FF8C00")
+                for _ in range(15):
+                    status_check = subprocess.run(
+                        ["systemctl", "is-active", "--quiet", "zapretdeck.service"],
+                        timeout=5
+                    )
+                    if status_check.returncode == 0:
+                        break
+                    QThread.msleep(1000)
+                else:
+                    self.show_status("Сервис не запустился!", "#ff6b6b")
+                    self.service_btn.setEnabled(True)
+                    self.is_changing_service = False
+                    return
+
+            self.service_btn.blockSignals(True)
+            self.service_btn.setChecked(target_state)
+            self.service_btn.blockSignals(False)
+            self.show_status("Работа в фоне включена" if target_state else "Работа в фоне отключена", "#107C10")
+
+        except Exception as e:
+            logger.error(f"Service toggle exception: {e}")
+            self.show_status("Критическая ошибка сервиса", "#ff6b6b")
+
+        finally:
+            self.service_btn.setEnabled(True)
+            self.is_changing_service = False
+
+    def toggle_game_filter_tile(self):
+        state = self.game_filter_btn.isChecked()
+        password = self.ask_sudo_password()
+        if password:
+            old_state = self.game_filter_enabled
+            self.game_filter_enabled = state
+            self.update_config()
+
+            if old_state != state and self.service_btn.isChecked():
+                # Автоматический перезапуск фона при смене фильтра
+                self.show_status("Применяю новый фильтр (перезапуск фона)...", "#FF8C00")
+                QTimer.singleShot(500, self.restart_background_service_silent)
             else:
-                password = self.ask_sudo_password()
-                if password:
-                    try:
-                        subprocess.run(["sudo", "-S", "nft", "flush", "ruleset"], input=password + "\n", text=True, capture_output=True, check=True)
-                        subprocess.run(["sudo", "-S", "pkill", "-f", "nfqws"], input=password + "\n", text=True, capture_output=True)
-                        if self.session_process:
-                            self.session_process.terminate()
-                            try:
-                                self.session_process.wait(timeout=10)
-                            except subprocess.TimeoutExpired:
-                                self.session_process.kill()
-                        logger.info("Сессия остановлена при выходе")
-                    except Exception as e:
-                        logger.error(f"Ошибка остановки сессии при выходе: {e}")
-                self.session_process = None
-        self.sudo_password = None
-        self.quit()
+                self.show_status(f"Игровой фильтр {'включён' if state else 'выключен'}", "#107C10")
+        else:
+            self.game_filter_btn.blockSignals(True)
+            self.game_filter_btn.setChecked(not state)
+            self.game_filter_btn.blockSignals(False)
+
+    def on_strategy_changed(self, text):
+        if not text:
+            return
+
+        password = self.ask_sudo_password()
+        if not password:
+            self.strategy_combo.blockSignals(True)
+            self.strategy_combo.setCurrentText(self.saved_strategy)
+            self.strategy_combo.blockSignals(False)
+            return
+
+        old_strategy = self.saved_strategy
+        self.saved_strategy = "auto_found.bat" if text == "Автоподбор" else text
+
+        if old_strategy != self.saved_strategy:
+            self.update_config()
+            self.show_status("Стратегия сохранена", "#107C10")
+
+            if self.service_btn.isChecked():
+                # Автоматический перезапуск фона при смене стратегии
+                self.show_status("Применяю новую стратегию (перезапуск фона)...", "#FF8C00")
+                QTimer.singleShot(500, self.restart_background_service_silent)
+        else:
+            self.show_status("Стратегия сохранена", "#107C10")
+
+    def restart_background_service_silent(self):
+        """Тихий перезапуск сервиса (без запроса пароля и сообщений)"""
+        try:
+            subprocess.run(["sudo", "systemctl", "restart", "zapretdeck.service"], check=True, timeout=30)
+            QTimer.singleShot(1000, lambda: self.show_status("Новая настройка применена", "#107C10"))
+        except Exception as e:
+            logger.error(f"Тихий перезапуск сервиса не удался: {e}")
+            self.show_status("Не удалось применить настройку", "#ff6b6b")
+
+    def on_service_changed(self, state):
+        if getattr(self, 'is_changing_service', False):
+            return
+        if self.service_btn.isChecked() != state:
+            self.service_btn.blockSignals(True)
+            self.service_btn.setChecked(state)
+            self.service_btn.blockSignals(False)
+
+    def create_labeled_combo(self, label, items, current):
+        frame = QFrame()
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        lbl = QLabel(label)
+        lbl.setStyleSheet("font-weight: bold; font-size: 14px;")
+        combo = QComboBox()
+        combo.addItems(items)
+        if current in items:
+            combo.setCurrentText(current)
+        layout.addWidget(lbl)
+        layout.addWidget(combo)
+        return frame
+
+    def start_status_checker(self):
+        self.checker = StatusChecker()
+        self.checker.session_changed.connect(self.on_session_changed)
+        self.checker.service_changed.connect(self.on_service_changed)
+        self.checker.start()
+        QTimer.singleShot(300, self.load_strategies)
+
+    def show_msg(self, title, text):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        msg.addButton("ОК", QMessageBox.ButtonRole.AcceptRole)
+        msg.addButton("Отменить", QMessageBox.ButtonRole.RejectRole)
+        msg.exec()
+
+    def update_config(self, source=None):
+        try:
+            current_strat = self.strategy_combo.currentText()
+            strat_to_save = "auto_found.bat" if current_strat == "Автоподбор" else current_strat
+            self.saved_strategy = strat_to_save
+
+            with open(CONF_FILE, "w") as f:
+                f.write(f"interface=any\n")
+                f.write(f"strategy={strat_to_save}\n")
+                f.write(f"gamefilter={'true' if self.game_filter_enabled else 'false'}\n")
+                f.write(f"auto_update=false\n")
+
+            if source != "silent":
+                self.show_status("Настройки сохранены", "#107C10")
+            logger.info(f"Конфиг обновлен: стратегия={strat_to_save}")
+        except Exception as e:
+            logger.error(f"Ошибка update_config: {e}")
+            self.show_status("Ошибка сохранения конфига", "#ff6b6b")
+
+    def load_config(self):
+        if os.path.exists(CONF_FILE):
+            with open(CONF_FILE, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("strategy="):
+                        self.saved_strategy = line.split("=", 1)[1]
+                    elif line.startswith("gamefilter="):
+                        val = line.split("=", 1)[1].lower()
+                        self.game_filter_enabled = val in ("true", "1", "yes", "on", "enabled")
+        self.load_strategies()
+        self.game_filter_btn.setChecked(self.game_filter_enabled)
+
+    def check_dependencies(self):
+        deps = ['ip', 'nft', 'systemctl', 'pgrep', 'pkill', 'bash', 'nmcli', 'curl']
+        return all(shutil.which(d) for d in deps)
+
+    def load_strategies(self):
+        strategies = []
+
+        if os.path.exists(CUSTOM_STRATEGIES_DIR):
+            try:
+                custom_strategies = [f for f in os.listdir(CUSTOM_STRATEGIES_DIR)
+                                     if f.endswith(".bat") and f not in HIDDEN_STRATEGIES]
+                strategies.extend(custom_strategies)
+            except Exception as e:
+                logger.error(f"Ошибка чтения custom-strategies: {e}")
+
+        if os.path.exists(LATEST_STRATEGIES_DIR):
+            try:
+                latest_strategies = [f for f in os.listdir(LATEST_STRATEGIES_DIR)
+                                     if f.endswith(".bat") and f not in HIDDEN_STRATEGIES]
+                strategies.extend(latest_strategies)
+            except Exception as e:
+                logger.error(f"Ошибка чтения zapret-latest: {e}")
+
+        if os.path.exists(CUSTOM_STRATEGIES_DIR) and any(f.endswith(".bat") for f in os.listdir(CUSTOM_STRATEGIES_DIR)):
+            if os.path.exists(RENAME_SCRIPT):
+                try:
+                    subprocess.run(["bash", RENAME_SCRIPT], cwd=BASE_DIR, capture_output=True)
+                    logger.info("rename_bat.sh применён к custom-strategies")
+                except Exception as e:
+                    logger.error(f"Ошибка запуска rename_bat.sh: {e}")
+
+        self.strategy_combo.blockSignals(True)
+        self.strategy_combo.clear()
+        self.strategy_combo.addItem("Автоподбор")
+        self.strategy_combo.addItems(strategies)
+        self.strategy_combo.blockSignals(False)
+
+        if self.saved_strategy == "auto_found.bat":
+            self.strategy_combo.setCurrentText("Автоподбор")
+        elif self.saved_strategy in strategies:
+            self.strategy_combo.setCurrentText(self.saved_strategy)
+        else:
+            self.strategy_combo.setCurrentIndex(0)
+
+        self.start_btn.setEnabled(True)
+
+    def check_for_update(self):
+        try:
+            r = requests.get(
+                "https://api.github.com/repos/rosakodu/zapretdeck/releases/latest",
+                headers={'User-Agent': 'ZapretDeck/1.0'}, timeout=8
+            )
+            data = r.json()
+            latest_tag = data.get("tag_name", "").lstrip("v")
+            latest_version = version.parse(latest_tag)
+            current_version = version.parse(CURRENT_VERSION)
+
+            if latest_version > current_version:
+                self.update_label.setText(f"Доступно: v{latest_tag}")
+                self.show_msg("Обновление", f"Вышла новая версия: v{latest_tag}\nПерейдите на GitHub для загрузки.")
+                self.version_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #ff6b6b;")
+            else:
+                self.version_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #107C10;")
+        except Exception as e:
+            logger.debug(f"Update check failed: {e}")
+
+    def closeEvent(self, event):
+        self.loading_timer.stop()
+        event.accept()
+
 
 if __name__ == "__main__":
-    try:
-        app = ZapretGUI()
-        app.mainloop()
-    except Exception as e:
-        logger.error(f"Критическая ошибка при запуске приложения: {e}")
-        raise
+    os.environ["QT_PLUGIN_PATH"] = "/usr/lib/qt6/plugins"
+    os.environ["QT_QPA_PLATFORMTHEME"] = "qt6ct"
+
+    app = QApplication(sys.argv)
+    print(f"[ZapretDeck] Запуск v{CURRENT_VERSION}")
+
+    window = ZapretGUI()
+    window.showMaximized()
+    sys.exit(app.exec())

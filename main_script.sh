@@ -1,269 +1,171 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
-# Константы
-BASE_DIR="$(realpath "$(dirname "$0")")"
+# === ПУТИ ===
+BASE_DIR="/opt/zapretdeck"
 REPO_DIR="$BASE_DIR/zapret-latest"
-REPO_URL="https://github.com/Flowseal/zapret-discord-youtube"
+CUSTOM_DIR="$BASE_DIR/custom-strategies"
 NFQWS_PATH="$BASE_DIR/nfqws"
 CONF_FILE="$BASE_DIR/conf.env"
 STOP_SCRIPT="$BASE_DIR/stop_and_clean_nft.sh"
-DNS_SCRIPT="$BASE_DIR/dns.sh"
 LOG_FILE="$BASE_DIR/debug.log"
+GAME_FILTER_PORTS="1024-65535"
 
-# Флаг отладки
-DEBUG=false
-NOINTERACTIVE=false
+nft_rules=()
+nfqws_params=()
 
-_term() {
-    if [[ -x "$STOP_SCRIPT" ]]; then
-        sudo /usr/bin/env bash "$STOP_SCRIPT" 2>&1 | while read -r line; do log "stop_script: $line"; done
-    else
-        log "Скрипт остановки $STOP_SCRIPT не найден или не исполняемый"
-    fi
-}
-trap _term SIGINT SIGTERM EXIT
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [MAIN] $*" | tee -a "$LOG_FILE"; }
 
-# Функция для логирования
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
-}
+# === УЛУЧШЕННАЯ ФУНКЦИЯ АВТОПОДБОРА ===
+auto_discovery() {
+    log "=== Запуск расширенного автоматического подбора стратегии ==="
+    # Используем google.com как лакмусовую бумажку для curl
+    local test_url="https://www.google.com"
+    
+    # Список стратегий, включая рабочую для YouTube hostfakesplit
+    local test_strats=(
+        "--filter-tcp=443 --dpi-desync=hostfakesplit --dpi-desync-repeats=6 --dpi-desync-fooling=ts --dpi-desync-hostfakesplit-mod=host=www.google.com"
+        "--filter-tcp=443 --dpi-desync=split2 --dpi-desync-split-pos=1 --dpi-desync-fooling=md5sig"
+        "--filter-tcp=443 --dpi-desync=fake --dpi-desync-autottl=2 --dpi-desync-repeats=6"
+        "--filter-tcp=443 --dpi-desync=disorder --dpi-desync-split-pos=1"
+        "--filter-tcp=443 --dpi-desync=fake --dpi-desync-ttl=8"
+    )
 
-# Функция отладочного логирования
-debug_log() {
-    if $DEBUG; then
-        log "[DEBUG] $1"
-    fi
-}
-
-# Функция обработки ошибок
-handle_error() {
-    log "Ошибка: $1" >&2
-    exit 1
-}
-
-# Функция для проверки наличия необходимых утилит
-check_dependencies() {
-    local deps=("git" "nft" "grep" "sed")
-    for dep in "${deps[@]}"; do
-        if ! command -v "$dep" >/dev/null 2>&1; then
-            handle_error "Не установлена утилита $dep"
+    for strat in "${test_strats[@]}"; do
+        log "Тестирую вариант: $strat"
+        
+        # Полная очистка перед тестом
+        sudo bash "$STOP_SCRIPT" >/dev/null 2>&1
+        
+        # Настройка минимальной таблицы для теста
+        sudo nft add table inet zapretunix
+        sudo nft add chain inet zapretunix output '{ type filter hook output priority 0; policy accept; }'
+        sudo nft add rule inet zapretunix output tcp dport 443 counter queue num 0 bypass
+        
+        # Запуск nfqws
+        local cmd="$NFQWS_PATH"
+        [ ! -f "$cmd" ] && cmd="$REPO_DIR/bin/nfqws"
+        sudo $cmd --daemon --qnum=0 $strat >/dev/null 2>&1
+        
+        # Пауза для инициализации сокета
+        sleep 3
+        
+        # Проверка curl (-k игнорирует ошибки сертификатов для скорости)
+        if curl -I -s -k --connect-timeout 8 "$test_url" > /dev/null; then
+            log ">>> УСПЕХ! Стратегия найдена: $strat"
+            
+            # Сохраняем результат
+            echo "@echo off" > "$CUSTOM_DIR/auto_found.bat"
+            echo ":: Автоматически подобрано $(date)" >> "$CUSTOM_DIR/auto_found.bat"
+            echo "$strat" >> "$CUSTOM_DIR/auto_found.bat"
+            
+            # Прописываем в конфиг
+            sed -i "s/^strategy=.*/strategy=auto_found.bat/" "$CONF_FILE"
+            
+            sudo bash "$STOP_SCRIPT" >/dev/null 2>&1
+            return 0
         fi
+        log "Результат: не работает."
     done
+
+    log "КРИТИЧЕСКАЯ ОШИБКА: Ни одна стратегия не подошла."
+    return 1
 }
 
-# Функция чтения конфигурационного файла
-load_config() {
-    if ! touch "$CONF_FILE" 2>/dev/null; then
-        handle_error "Нет прав на запись в $CONF_FILE"
-    fi
-    if [ ! -f "$CONF_FILE" ]; then
-        log "Файл конфигурации $CONF_FILE не найден, создаю с значениями по умолчанию"
-        interface="any"
-        strategy=$(find "$REPO_DIR" -maxdepth 1 -type f -name "*.bat" | head -n 1 | xargs -n 1 basename 2>/dev/null)
-        if [ -z "$strategy" ]; then
-            handle_error "Не найден ни один .bat файл в $REPO_DIR"
-        fi
-        echo -e "interface=$interface\nstrategy=$strategy\ndns=disabled" > "$CONF_FILE"
-    else
-        source "$CONF_FILE"
-        interface=${interface:-any}
-        if [ -z "${strategy:-}" ]; then
-            strategy=$(find "$REPO_DIR" -maxdepth 1 -type f -name "*.bat" | head -n 1 | xargs -n 1 basename 2>/dev/null)
-            if [ -z "$strategy" ]; then
-                handle_error "Не найден ни один .bat файл в $REPO_DIR, и strategy не указан"
-            fi
-            echo -e "interface=$interface\nstrategy=$strategy\ndns=${dns:-disabled}" > "$CONF_FILE"
-        fi
-    fi
-    debug_log "Загружено из conf.env: interface=$interface, strategy=$strategy, dns=$dns"
-}
-
-# Функция для настройки репозитория
-setup_repository() {
-    if [ ! -d "$REPO_DIR" ]; then
-        log "Клонирование репозитория..."
-        git clone "$REPO_URL" "$REPO_DIR" 2>&1 | while read -r line; do log "git: $line"; done || handle_error "Ошибка при клонировании репозитория"
-        cd "$REPO_DIR" && git checkout a609396772dfe2a3c85b0cec8c314ff9ac96a5c0 2>&1 | while read -r line; do log "git: $line"; done && cd ..
-        chmod +x "$BASE_DIR/rename_bat.sh"
-        rm -rf "$REPO_DIR/.git"
-        "$BASE_DIR/rename_bat.sh" 2>&1 | while read -r line; do log "rename_bat: $line"; done || handle_error "Ошибка при переименовании файлов"
-    else
-        log "Использование существующей версии репозитория"
-    fi
-}
-
-# Функция для поиска bat файлов
-find_bat_files() {
-    local pattern="$1"
-    find "$REPO_DIR" -maxdepth 1 -type f -name "$pattern"
-}
-
-# Функция для выбора стратегии
-select_strategy() {
-    cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
-    
-    if $NOINTERACTIVE; then
-        debug_log "Неинтерактивный режим, strategy=$strategy"
-        if [ ! -f "$strategy" ]; then
-            handle_error "Указанный .bat файл стратегии $strategy не найден"
-        fi
-        parse_bat_file "$strategy"
-        cd ..
-        return
-    fi
-    
-    local IFS=$'\n'
-    local bat_files=($(find_bat_files "general*.bat" | xargs -n1 echo) $(find_bat_files "discord.bat" | xargs -n1 echo))
-    
-    if [ ${#bat_files[@]} -eq 0 ]; then
-        cd ..
-        handle_error "Не найдены подходящие .bat файлы"
-    fi
-    
-    echo "Доступные стратегии:"
-    for i in "${!bat_files[@]}"; do
-        echo "$((i+1))) ${bat_files[i]}"
-    done
-    read -p "#? " choice
-    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le ${#bat_files[@]} ]]; then
-        strategy="${bat_files[$((choice-1))]}"
-        log "Выбрана стратегия: $strategy"
-        parse_bat_file "$strategy"
-        cd ..
-    else
-        echo "Неверный выбор. Попробуйте еще раз."
-        select_strategy
-    fi
-}
-
-# Функция парсинга параметров из bat файла
 parse_bat_file() {
     local file="$1"
-    local queue_num=0
-    local bin_path="bin/"
-    debug_log "Parsing .bat file: $file"
-    
-    while IFS= read -r line; do
-        debug_log "Processing line: $line"
+    local q=0
+    log "Начинаю разбор файла: $file"
+
+    local content
+    content=$(tr -d '\r\000' < "$file" | sed ':a; /^[ \t]*^/ { N; s/\n[ \t]*\^//; ba }' | sed 's/--new/\n/g')
+
+    while read -r line; do
+        [[ "$line" =~ ^[[:space:]]*:: ]] && continue
+        [[ ! "$line" =~ "--filter-" ]] && continue
         
-        [[ "$line" =~ ^[[:space:]]*:: || -z "$line" ]] && continue
+        line="${line//%BIN%/$REPO_DIR/bin/}"
+        line="${line//%LISTS%/$REPO_DIR/lists/}"
+        line="${line//\\//}"
         
-        line="${line//%BIN%/$bin_path}"
-        line="${line//%GameFilter/}"
-        
-        if [[ "$line" =~ --filter-(tcp|udp)=([0-9,-]+)[[:space:]]*(.*?)(--new|$) ]]; then
-            local protocol="${BASH_REMATCH[1]}"
+        if [[ "${gamefilter:-}" == "true" ]]; then
+            line="${line//%GameFilter%/$GAME_FILTER_PORTS}"
+        else
+            line=$(echo "$line" | sed -E 's/%GameFilter%//g; s/,,+/,/g; s/,([[:space:]])/\1/g; s/=[,]+/=/g')
+        fi
+
+        if [[ "$line" =~ --filter-(tcp|udp)=([0-9,-]+) ]]; then
+            local proto="${BASH_REMATCH[1]}"
             local ports="${BASH_REMATCH[2]}"
-            local nfqws_args="${BASH_REMATCH[3]}"
+            ports=$(echo "$ports" | sed 's/,$//; s/^,//')
             
-            nfqws_args="${nfqws_args//%LISTS%/lists/}"
+            local args
+            args=$(echo "$line" | sed -E "s/--filter-$proto=[0-9,-]+//; s/\"//g; s/ - / /g" | xargs)
             
-            nft_rules+=("$protocol dport {$ports} counter queue num $queue_num bypass")
-            nfqws_params+=("$nfqws_args")
-            debug_log "Matched protocol: $protocol, ports: $ports, queue: $queue_num"
-            debug_log "NFQWS parameters for queue $queue_num: $nfqws_args"
-            
-            ((queue_num++))
-        fi
-    done < <(grep -v "^@echo" "$file" | grep -v "^chcp" | tr -d '\r')
-}
-
-# Функция настройки nftables
-setup_nftables() {
-    local interface="$1"
-    local table_name="inet zapretunix"
-    local chain_name="output"
-    local rule_comment="Added by zapret script"
-    
-    log "Настройка nftables с очисткой только помеченных правил..."
-    
-    if sudo nft list tables | grep -q "$table_name"; then
-        sudo nft flush chain $table_name $chain_name
-        sudo nft delete chain $table_name $chain_name
-        sudo nft delete table $table_name
-    fi
-    
-    sudo nft add table $table_name
-    sudo nft add chain $table_name $chain_name "{ type filter hook output priority 0; }"
-    
-    local oif_clause=""
-    if [ -n "$interface" ] && [ "$interface" != "any" ]; then
-        oif_clause="oifname \"$interface\""
-    fi
-
-    for queue_num in "${!nft_rules[@]}"; do
-        sudo nft add rule $table_name $chain_name $oif_clause ${nft_rules[$queue_num]} comment \"$rule_comment\" ||
-        handle_error "Ошибка при добавлении правила nftables для очереди $queue_num"
-    done
-}
-
-# Функция запуска nfqws
-start_nfqws() {
-    log "Запуск процессов nfqws..."
-    sudo pkill -f nfqws 2>/dev/null
-    cd "$REPO_DIR" || handle_error "Не удалось перейти в директорию $REPO_DIR"
-    for queue_num in "${!nfqws_params[@]}"; do
-        debug_log "Запуск nfqws с параметрами: $NFQWS_PATH --daemon --qnum=$queue_num ${nfqws_params[$queue_num]}"
-        eval "sudo $NFQWS_PATH --daemon --qnum=$queue_num ${nfqws_params[$queue_num]}" ||
-        handle_error "Ошибка при запуске nfqws для очереди $queue_num"
-    done
-}
-
-# Основная функция
-main() {
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
-            -debug)
-                DEBUG=true
-                shift
-                ;;
-            -nointeractive)
-                NOINTERACTIVE=true
-                shift
-                load_config
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
-    
-    check_dependencies
-    if [ ! -d "$REPO_DIR" ]; then
-        setup_repository
-    fi
-    
-    if $NOINTERACTIVE; then
-        select_strategy
-        if [ "${dns:-disabled}" = "enabled" ] && [ -x "$DNS_SCRIPT" ]; then
-            sudo bash "$DNS_SCRIPT" set 2>&1 | while read -r line; do log "dns.sh: $line"; done || log "Ошибка установки DNS"
-        fi
-        setup_nftables "$interface"
-    else
-        select_strategy
-        local interfaces=("any" $(ls /sys/class/net 2>/dev/null | grep -v lo))
-        if [ ${#interfaces[@]} -eq 0 ]; then
-            handle_error "Не найдены сетевые интерфейсы"
-        fi
-        echo "Доступные сетевые интерфейсы:"
-        select interface in "${interfaces[@]}"; do
-            if [ -n "$interface" ]; then
-                log "Выбран интерфейс: $interface"
-                break
+            if [[ -n "$ports" ]]; then
+                nft_rules+=("$proto dport {$ports} counter queue num $q bypass")
+                nfqws_params+=("$args")
+                log "-> Очередь $q: $proto/[$ports]"
+                ((q++))
             fi
-            echo "Неверный выбор. Попробуйте еще раз."
-        done
-        if [ "${dns:-disabled}" = "enabled" ] && [ -x "$DNS_SCRIPT" ]; then
-            sudo bash "$DNS_SCRIPT" set 2>&1 | while read -r line; do log "dns.sh: $line"; done || log "Ошибка установки DNS"
         fi
-        setup_nftables "$interface"
-    fi
-    start_nfqws
-    log "Настройка успешно завершена"
+    done <<< "$content"
 }
 
-# Запуск скрипта
-main "$@"
+main() {
+    if [[ "${1:-}" == "auto" ]]; then
+        auto_discovery
+        exit $?
+    fi
 
-sleep infinity &
-wait
+    log "------------------------------------------------"
+    log "Запуск ZapretDeck"
+    
+    if [ ! -f "$CONF_FILE" ]; then log "ОШИБКА: Конфиг не найден"; exit 1; fi
+    source "$CONF_FILE"
+    
+    log "Очистка nftables..."
+    sudo bash "$STOP_SCRIPT" || true
+
+    local strat_path="$REPO_DIR/$strategy"
+    [[ ! -f "$strat_path" ]] && strat_path="$CUSTOM_DIR/$strategy"
+    
+    if [[ ! -f "$strat_path" ]]; then
+        log "ОШИБКА: Файл стратегии не найден: $strategy"
+        exit 1
+    fi
+
+    parse_bat_file "$strat_path"
+
+    if [ ${#nft_rules[@]} -eq 0 ]; then
+        log "КРИТИЧЕСКАЯ ОШИБКА: Не удалось распарсить ни одной очереди!"
+        exit 1
+    fi
+
+    log "Применение правил nftables..."
+    local table="inet zapretunix"
+    sudo nft add table $table
+    sudo nft add chain $table output '{ type filter hook output priority 0; policy accept; }'
+    
+    local dev_cond=""
+    [[ -n "${interface:-}" && "$interface" != "any" ]] && dev_cond="oifname \"$interface\""
+
+    for i in "${!nft_rules[@]}"; do
+        sudo nft add rule $table output $dev_cond ${nft_rules[$i]} comment "zapretdeck"
+    done
+
+    log "Запуск процессов nfqws..."
+    cd "$REPO_DIR/bin" || cd "$REPO_DIR"
+
+    for i in "${!nfqws_params[@]}"; do
+        log "Q$i: запуск..."
+        local cmd="$NFQWS_PATH"
+        [ ! -f "$cmd" ] && cmd="$REPO_DIR/bin/nfqws"
+        eval "sudo $cmd --daemon --qnum=$i ${nfqws_params[$i]}" >> "$LOG_FILE" 2>&1
+    done
+
+    log "Готово. Работает очередей: ${#nft_rules[@]}"
+    sleep infinity
+}
+
+main "$@"
