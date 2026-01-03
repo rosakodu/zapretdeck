@@ -12,7 +12,7 @@ ZapretDeck — простое и удобное приложение для об
 
 **Зависимости**  
 
-• Системные: `bash`, `nftables`, `python3`, `curl`, `git`, `networkmanager` 
+• Системные: `bash` `nftables` `python3` `curl` `git` `networkmanager` 
 
 • Python-модули: `requests` `packaging`
 
