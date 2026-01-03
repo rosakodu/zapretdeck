@@ -3,9 +3,14 @@
 </p>
 
 # ZapretDeck — Лёгкий обход блокировок для Steam Deck и Linux
+ZapretDeck — простое и удобное приложение для обхода сетевых блокировок. Имеет графический интерфейс для управления сетью и возможность работы в фоне.
 
-ZapretDeck — простое и удобное приложение для обхода сетевых блокировок YouTube и Discord. Имеет графический интерфейс для управления сетью.
 #
+
+<p align="center">
+  <img src="https://github.com/rosakodu/zapretdeck/blob/master/zapret.png" alt="ZapretDeck" width="1000">
+</p>
+
 
 • Создан на основе `zapret-discord-youtube-linux` от <a href="https://github.com/Sergeydigl3">Sergeydigl3</a> 
 
@@ -38,10 +43,12 @@ ZapretDeck — простое и удобное приложение для об
 | Семейство | Дистрибутивы |
 |----------|--------------|
 | Gaming | SteamOS, ChimeraOS, SteamFork, Bazzite |
-| Arch-based | Arch, Manjaro, EndeavourOS, Garuda, CachyOS, Arcturus |
+| Arch-based | Arch, Omarchy, Manjaro, EndeavourOS, Garuda, CachyOS |
 | Debian-based | Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon |
 | RHEL-based | Fedora, CentOS, RHEL, AlmaLinux, Rocky |
 | SUSE | openSUSE, SLES |
+
+##
 
 **ВАЖНО**  
 
