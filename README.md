@@ -18,6 +18,8 @@ ZapretDeck — простое и удобное приложение для об
 
 Открывает доступ:
 
+• `Discord` на Steam Deck
+
 • `YouTube` на Steam Deck
 
 • `ProtonDB` на Steam Deck
