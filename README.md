@@ -5,8 +5,25 @@
 # ZapretDeck — Лёгкий обход блокировок для Steam Deck и Linux
 
 ZapretDeck — простое и удобное приложение для обхода сетевых блокировок YouTube и Discord. Имеет графический интерфейс для управления сетью.
+#
 
 • Создан на основе `zapret-discord-youtube-linux` от <a href="https://github.com/Sergeydigl3">Sergeydigl3</a> 
+
+Открывает доступ:
+
+• `YouTube` на Steam Deck
+
+• `ProtonDB` на Steam Deck
+
+• `SteamGridDB` на Steam Deck
+
+• `CSS Loader` на Steam Deck
+
+• `Decky Loader` на Steam Deck
+
+• `Are We Anti-Cheat Yet?` на Steam Deck
+
+Установщик предлагает обновить `SteamOS` и починить `Discover`
 
 • Установщик включает модули из `Geekcom Deck Tools` от <a href="https://github.com/Nospire">Nospire</a>
 
@@ -16,13 +33,29 @@ ZapretDeck — простое и удобное приложение для об
 
 • Python-модули: `requests` `packaging`
 
+## 🐧 Поддерживаемые дистрибутивы
+
+| Семейство | Дистрибутивы |
+|----------|--------------|
+| Gaming | SteamOS, ChimeraOS, SteamFork, Bazzite |
+| Arch-based | Arch, Manjaro, EndeavourOS, Garuda, CachyOS, Arcturus |
+| Debian-based | Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon |
+| RHEL-based | Fedora, CentOS, RHEL, AlmaLinux, Rocky |
+| SUSE | openSUSE, SLES |
+
 **ВАЖНО**  
 
 • Remote Play и передача файлов не будут работать во время активации скрипта
 
 • После обновления SteamOS приложение будет удаляться, а сервис будет работать, рекомендую переустановить приложение
 
-Установка:
+Перед установкой задайте пароль через терминал:
+
+```bash
+passwd
+```
+
+Установка через терминал:
 
 ```bash
 sudo steamos-readonly disable
