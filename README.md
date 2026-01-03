@@ -8,10 +8,6 @@ ZapretDeck — простое и удобное приложение для об
 
 #
 
-<p align="center">
-  <img src="https://github.com/rosakodu/zapretdeck/blob/master/zapret.png" alt="ZapretDeck" width="1000">
-</p>
-
 #
 
 • Создан на основе `zapret-discord-youtube-linux` от <a href="https://github.com/Sergeydigl3">Sergeydigl3</a> 
