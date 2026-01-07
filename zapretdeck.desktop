@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=ZapretDeck
+Exec=/usr/local/bin/zapretdeck
+Type=Application
+Terminal=false
+Icon=/opt/zapretdeck/zapretdeck.png
+Categories=Network;Utility;
+Comment=Обход блокировок
+StartupWMClass=zapretdeck
+StartupNotify=true
+NoDisplay=false
