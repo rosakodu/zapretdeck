@@ -33,10 +33,6 @@ ZapretDeck — простое и удобное приложение для об
 
 • `Are We Anti-Cheat Yet?` на Steam Deck
 
-Установщик предлагает обновить `SteamOS` и починить `Discover`
-
-• Установщик включает модули из `Geekcom Deck Tools` от <a href="https://github.com/Nospire">Nospire</a>
-
 #
 
 **Зависимости**  
