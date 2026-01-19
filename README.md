@@ -77,46 +77,67 @@ passwd
 
 ```bash
 sudo steamos-readonly disable
-mkdir -p ~/zapretdeck
-cd ~/zapretdeck || exit 1
-curl -L -o ZapretDeck_v0.1.7.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.7/ZapretDeck_v0.1.7.tar.gz
-tar -xzf ZapretDeck_v0.1.7.tar.gz --strip-components=1
-rm ZapretDeck_v0.1.7.tar.gz
-chmod +x ~/zapretdeck/install.sh
-sudo ~/zapretdeck/install.sh
+
+# Переходим в Downloads
+cd ~/Downloads || exit 1
+
+# Создаём папку
+mkdir -p zapretdeck
+cd zapretdeck || exit 1
+
+# Загружаем архив
+curl -L -o ZapretDeck_v0.1.8.tar.gz \
+https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.8/ZapretDeck_v0.1.8.tar.gz
+
+# Распаковываем
+tar -xzf ZapretDeck_v0.1.8.tar.gz --strip-components=1
+
+# Удаляем архив
+rm ZapretDeck_v0.1.8.tar.gz
+
+# Делаем install.sh исполняемым
+chmod +x install.sh
+
+# Запускаем установку
+sudo ./install.sh
+
+# Возвращаем защиту записи (только для SteamOS)
+sudo steamos-readonly enable
 ```
 
 Деинсталляция:
 
 ```bash
-# 1. Отключаем защиту записи (только для SteamOS)
+# Отключаем защиту файловой системы (SteamOS)
 sudo steamos-readonly disable
 
-# 2. Останавливаем и отключаем службу, чтобы интернет работал напрямую
-sudo systemctl disable --now zapretdeck.service 2>/dev/null || true
-sudo systemctl disable --now zapret_discord_youtube.service 2>/dev/null || true
+# Переходим в папку с ZapretDeck
+cd ~/Downloads/zapretdeck || exit 1
 
-# 3. Очищаем сетевые правила nftables (через встроенный скрипт, если он есть)
-if [ -f /opt/zapretdeck/stop_and_clean_nft.sh ]; then
-    sudo bash /opt/zapretdeck/stop_and_clean_nft.sh
-fi
+# Останавливаем сервисы Zapret (если запущены)
+sudo systemctl stop zapret zapret.service 2>/dev/null
+sudo systemctl disable zapret zapret.service 2>/dev/null
 
-# 4. Удаляем системные файлы, ярлыки и исполняемую команду
-sudo rm -rf /opt/zapretdeck
-sudo rm -f /etc/systemd/system/zapretdeck.service
-sudo rm -f /etc/systemd/system/zapret_discord_youtube.service
-sudo rm -f /usr/local/bin/zapretdeck
-sudo rm -f /usr/share/applications/zapretdeck.desktop
-rm -f ~/.local/share/applications/zapretdeck.desktop
-
-# 5. Удаляем временную папку загрузки (если она осталась)
-rm -rf ~/zapretdeck
-
-# 6. Обновляем список системных служб
+# Удаляем systemd-сервисы
+sudo rm -f /etc/systemd/system/zapret.service
 sudo systemctl daemon-reload
 
-# 7. Возвращаем защиту записи (только для SteamOS)
+# Удаляем установленные файлы ZapretDeck
+sudo rm -rf /opt/zapretdeck
+sudo rm -rf /usr/local/bin/zapret*
+sudo rm -rf /etc/zapret
+
+# Удаляем правила iptables/nftables (если применялись)
+sudo iptables -F 2>/dev/null
+sudo nft flush ruleset 2>/dev/null
+
+# Удаляем папку установки из Downloads
+cd ~
+rm -rf ~/Downloads/zapretdeck
+
+# Возвращаем защиту записи (SteamOS)
 sudo steamos-readonly enable
+
 ```
 
 #
