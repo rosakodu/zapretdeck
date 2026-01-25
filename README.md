@@ -6,7 +6,7 @@
 ZapretDeck — простое и удобное приложение для обхода сетевых блокировок. 
 Имеет графический интерфейс для управления сетью и возможность работы в фоне.
 
-#
+# 
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/rosakodu/zapretdeck/master/zapretcover.png" alt="zapretdeck cover">
