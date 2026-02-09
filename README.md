@@ -82,14 +82,13 @@ mkdir -p zapretdeck
 cd zapretdeck || exit 1
 
 # Загружаем архив
-curl -L -o ZapretDeck_v0.1.8.tar.gz \
-https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.8/ZapretDeck_v0.1.8.tar.gz
+curl -L -o ZapretDeck_v0.1.9.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.9/ZapretDeck_v0.1.9.tar.gz
 
 # Распаковываем
-tar -xzf ZapretDeck_v0.1.8.tar.gz --strip-components=1
+tar -xzf ZapretDeck_v0.1.9.tar.gz --strip-components=1
 
 # Удаляем архив
-rm ZapretDeck_v0.1.8.tar.gz
+rm ZapretDeck_v0.1.9.tar.gz
 
 # Делаем install.sh исполняемым
 chmod +x install.sh
