@@ -72,32 +72,37 @@ passwd
 Установка через терминал:
 
 ```bash
+# Отключаем защиту от записи (обязательно для SteamOS)
 sudo steamos-readonly disable
 
-# Переходим в Downloads
+# Переходим в Downloads (или любую другую удобную папку)
 cd ~/Downloads || exit 1
 
-# Создаём папку
+# Создаём отдельную папку, чтобы не мусорить
 mkdir -p zapretdeck
 cd zapretdeck || exit 1
 
-# Загружаем архив
-curl -L -o ZapretDeck_v0.1.9.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.9/ZapretDeck_v0.1.9.tar.gz
+# Скачиваем самую свежую версию (v.0.2.0)
+curl -L -o ZapretDeck_v0.2.0.tar.gz \
+     https://github.com/rosakodu/zapretdeck/releases/download/v.0.2.0/ZapretDeck_v0.2.0.tar.gz
 
-# Распаковываем
-tar -xzf ZapretDeck_v0.1.9.tar.gz --strip-components=1
+# Распаковываем, убирая верхний уровень директории (если он есть)
+tar -xzf ZapretDeck_v0.2.0.tar.gz --strip-components=1
 
-# Удаляем архив
-rm ZapretDeck_v0.1.9.tar.gz
+# Удаляем архив — место на SSD не бесконечное
+rm ZapretDeck_v0.2.0.tar.gz
 
-# Делаем install.sh исполняемым
+# Делаем установщик исполняемым
 chmod +x install.sh
 
 # Запускаем установку
 sudo ./install.sh
 
-# Возвращаем защиту записи (только для SteamOS)
+# Включаем защиту записи обратно (очень рекомендуется)
 sudo steamos-readonly enable
+
+# Опционально: убираем временную папку после установки
+# cd .. && rm -rf zapretdeck
 ```
 
 Деинсталляция:
