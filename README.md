@@ -35,6 +35,25 @@ ZapretDeck — простое и удобное приложение для об
 
 #
 
+Сетевые игры, которые будут работать с включенным ZapretDeck и WARP: 
+
+• `Dead by Daylight`
+
+• `Party Animals`
+
+• `R.E.P.O.`
+
+• `Rematch`
+
+• `Fallout 76`
+
+• `Arc Riders`
+
+• `Warframe`
+
+И многие другие...
+
+
 **Зависимости**  
 
 • Системные: `bash` `nftables` `python3` `curl` `git` `networkmanager` 
