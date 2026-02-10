@@ -144,6 +144,7 @@ sudo systemctl daemon-reload
 sudo rm -rf /opt/zapretdeck
 sudo rm -rf /usr/local/bin/zapret*
 sudo rm -rf /etc/zapret
+sudo rm -rf ~/zapretdeck
 
 # Удаляем правила iptables/nftables (если применялись)
 sudo iptables -F 2>/dev/null
