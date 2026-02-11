@@ -23,6 +23,8 @@ ZapretDeck — простое и удобное приложение для об
 
 • `YouTube` на Steam Deck
 
+• `Telegram` на Steam Deck
+
 • `ProtonDB` на Steam Deck
 
 • `SteamGridDB` на Steam Deck
