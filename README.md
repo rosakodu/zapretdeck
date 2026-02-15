@@ -105,15 +105,15 @@ cd ~/Downloads || exit 1
 mkdir -p zapretdeck
 cd zapretdeck || exit 1
 
-# Скачиваем самую свежую версию (v.0.2.0)
-curl -L -o ZapretDeck_v0.2.0.tar.gz \
-     https://github.com/rosakodu/zapretdeck/releases/download/v.0.2.0/ZapretDeck_v0.2.0.tar.gz
+# Скачиваем самую свежую версию (v.0.1.9)
+curl -L -o ZapretDeck_v0.1.9.tar.gz \
+     https://github.com/rosakodu/zapretdeck/releases/download/v.0.1.9/ZapretDeck_v0.1.9.tar.gz
 
 # Распаковываем, убирая верхний уровень директории (если он есть)
-tar -xzf ZapretDeck_v0.2.0.tar.gz --strip-components=1
+tar -xzf ZapretDeck_v0.1.9.tar.gz --strip-components=1
 
 # Удаляем архив — место на SSD не бесконечное
-rm ZapretDeck_v0.2.0.tar.gz
+rm ZapretDeck_v0.1.9.tar.gz
 
 # Делаем установщик исполняемым
 chmod +x install.sh
@@ -127,6 +127,7 @@ sudo steamos-readonly enable
 # Опционально: убираем временную папку после установки
 # cd .. && rm -rf zapretdeck
 ```
+
 
 Деинсталляция:
 
