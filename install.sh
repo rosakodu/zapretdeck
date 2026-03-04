@@ -434,7 +434,13 @@ if [[ "$PKG_MANAGER" == "pacman" ]]; then
 
         # 6. Обновление базы данных пакетов
         echo -e "${WHITE}Обновление базы данных пакетов...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman -Syy 2>&1 | tee -a "$LOG_FILE" || true
+        sudo pacman -Sy 2>&1 | tee -a "$LOG_FILE" || {
+            echo -e "${RED}Ошибка: Не удалось обновить базу данных пакетов${NC}" | tee -a "$LOG_FILE"
+        }
+        
+        # 7. Предварительная установка libgcc (иногда требуется для разрешения зависимостей в Chaotic-AUR)
+        echo -e "${WHITE}Проверка libgcc...${NC}" | tee -a "$LOG_FILE"
+        sudo pacman -S --noconfirm --needed libgcc 2>&1 | tee -a "$LOG_FILE" || true
        
         # Установка WARP
         echo -e "${WHITE}Установка cloudflare-warp-bin...${NC}" | tee -a "$LOG_FILE"
@@ -445,10 +451,10 @@ if [[ "$PKG_MANAGER" == "pacman" ]]; then
         # Настройка и запуск сервисов WARP
         echo -e "${WHITE}Настройка сервисов WARP...${NC}" | tee -a "$LOG_FILE"
         sudo systemctl enable --now warp-svc.service 2>&1 | tee -a "$LOG_FILE"
-        if [[ -n "$DBUS_SESSION_BUS_ADDRESS" && -n "$XDG_RUNTIME_DIR" ]]; then
+        if systemctl --user status >/dev/null 2>&1; then
             systemctl --user enable --now warp-taskbar 2>&1 | tee -a "$LOG_FILE" || echo -e "${YELLOW}Предупреждение: Не удалось запустить warp-taskbar${NC}" | tee -a "$LOG_FILE"
         else
-            echo -e "${YELLOW}Пропуск запуска warp-taskbar: DBUS_SESSION_BUS_ADDRESS или XDG_RUNTIME_DIR не определены${NC}" | tee -a "$LOG_FILE"
+            echo -e "${YELLOW}Пропуск запуска warp-taskbar: Пользовательская сессия systemd не активна или нет доступа к D-Bus${NC}" | tee -a "$LOG_FILE"
         fi
 
         echo -e "${GREEN}WARP установлен и запущен${NC}" | tee -a "$LOG_FILE"
