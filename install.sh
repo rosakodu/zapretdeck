@@ -395,70 +395,63 @@ else
         fi
     done
 fi
-# === 10b. Установка WARP (Arch/SteamOS) ===
+# === 10b. Установка WARP (исправленная версия) ===
 if [[ "$PKG_MANAGER" == "pacman" ]]; then
     # Информируем пользователя об условиях использования WARP
     echo
-    echo -e "${YELLOW}При установке и использовании Cloudflare WARP вы подтверждаете своё согласие с условиями пользовательского соглашения Cloudflare, включая:\n\nПолитику конфиденциальности — https://www.cloudflare.com/ru-ru/application/privacypolicy/\n\nУсловия использования — https://www.cloudflare.com/ru-ru/application/terms/${NC}" | tee -a "$LOG_FILE"
+    echo -e "${YELLOW}При установке и использовании Cloudflare WARP вы подтверждаете своё согласие с условиями Cloudflare...${NC}" | tee -a "$LOG_FILE"
 
     if ask_yes_no "Установить Cloudflare WARP?" "y"; then
         echo -e "${BLUE}Установка WARP...${NC}" | tee -a "$LOG_FILE"
-       
-        # Настройка Chaotic-AUR
-        echo -e "${WHITE}Настройка репозитория Chaotic-AUR...${NC}" | tee -a "$LOG_FILE"
 
-        # 1. Инициализация ключей pacman
-        echo -e "${WHITE}Инициализация ключей pacman...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman-key --init 2>&1 | tee -a "$LOG_FILE" || true
-        sudo pacman-key --populate 2>&1 | tee -a "$LOG_FILE" || true
+        # Проверяем, уже настроен ли Chaotic-AUR (чтобы не ломать свежий mirrorlist)
+        if ! grep -q "^\[chaotic-aur\]" /etc/pacman.conf 2>/dev/null; then
+            echo -e "${WHITE}Настройка репозитория Chaotic-AUR (первый раз)...${NC}" | tee -a "$LOG_FILE"
 
-        # 2. Установка base-devel и fakeroot
-        echo -e "${WHITE}Установка base-devel и fakeroot...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman -Syu --noconfirm base-devel 2>&1 | tee -a "$LOG_FILE" || true
-        sudo pacman -Syu --noconfirm fakeroot 2>&1 | tee -a "$LOG_FILE" || true
+            sudo pacman-key --init 2>&1 | tee -a "$LOG_FILE"
+            sudo pacman-key --populate 2>&1 | tee -a "$LOG_FILE"
 
-        # 3. Добавление ключей Chaotic-AUR
-        echo -e "${WHITE}Добавление ключей Chaotic-AUR...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com 2>&1 | tee -a "$LOG_FILE" || true
-        sudo pacman-key --lsign-key 3056513887B78AEB 2>&1 | tee -a "$LOG_FILE" || true
+            sudo pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com 2>&1 | tee -a "$LOG_FILE"
+            sudo pacman-key --lsign-key 3056513887B78AEB 2>&1 | tee -a "$LOG_FILE"
 
-        # 4. Установка keyring и mirrorlist
-        echo -e "${WHITE}Установка chaotic-keyring и chaotic-mirrorlist...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 2>&1 | tee -a "$LOG_FILE" || true
-        sudo pacman -U 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' 2>&1 | tee -a "$LOG_FILE" || true
-       
-        # 5. Добавление репозитория в pacman.conf
-        if ! grep -q "^\[chaotic-aur\]" /etc/pacman.conf; then
-            echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | sudo tee -a /etc/pacman.conf 2>&1 | tee -a "$LOG_FILE"
-        fi
+            # Ключ и mirrorlist с защитой от отката
+            sudo pacman -U --noconfirm --needed \
+                'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst' 2>&1 | tee -a "$LOG_FILE"
 
-        # 6. Обновление базы данных пакетов
-        echo -e "${WHITE}Обновление базы данных пакетов...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman -Sy 2>&1 | tee -a "$LOG_FILE" || {
-            echo -e "${RED}Ошибка: Не удалось обновить базу данных пакетов${NC}" | tee -a "$LOG_FILE"
-        }
-        
-        # 7. Гарантируем установку gcc-libs
-        echo -e "${WHITE}Установка gcc-libs...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman -S --noconfirm --needed gcc-libs 2>&1 | tee -a "$LOG_FILE" || true
-       
-        # Установка WARP
-        echo -e "${WHITE}Установка cloudflare-warp-bin...${NC}" | tee -a "$LOG_FILE"
-        sudo $PKG_INSTALL_CMD cloudflare-warp-bin 2>&1 | tee -a "$LOG_FILE" || {
-            echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
-        }
-       
-        # Настройка и запуск сервисов WARP
-        echo -e "${WHITE}Настройка сервисов WARP...${NC}" | tee -a "$LOG_FILE"
-        sudo systemctl enable --now warp-svc.service 2>&1 | tee -a "$LOG_FILE"
-        # Проверка доступности пользовательского D-Bus (с подавлением ошибок соединения)
-        if DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus systemctl --user status >/dev/null 2>&1; then
-            DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus systemctl --user enable --now warp-taskbar 2>&1 | tee -a "$LOG_FILE" || echo -e "${YELLOW}Предупреждение: Не удалось запустить warp-taskbar${NC}" | tee -a "$LOG_FILE"
+            sudo pacman -U --noconfirm --needed \
+                'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst' 2>&1 | tee -a "$LOG_FILE"
+
+            if ! grep -q "^\[chaotic-aur\]" /etc/pacman.conf; then
+                echo -e "\n[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist" | sudo tee -a /etc/pacman.conf
+            fi
+
+            sudo pacman -Sy 2>&1 | tee -a "$LOG_FILE"
         else
-            echo -e "${YELLOW}Пропуск запуска warp-taskbar: Пользовательская сессия systemd не активна или нет доступа к D-Bus${NC}" | tee -a "$LOG_FILE"
+            echo -e "${GREEN}Chaotic-AUR уже настроен, пропускаем bootstrap${NC}" | tee -a "$LOG_FILE"
+            sudo pacman -Sy 2>&1 | tee -a "$LOG_FILE"
         fi
 
-        echo -e "${GREEN}WARP установлен и запущен${NC}" | tee -a "$LOG_FILE"
+        # Гарантируем gcc-libs
+        sudo pacman -S --noconfirm --needed gcc-libs 2>&1 | tee -a "$LOG_FILE"
+
+        # Устанавливаем пакет, игнорируя баговую зависимость libgcc
+        echo -e "${WHITE}Установка cloudflare-warp-bin...${NC}" | tee -a "$LOG_FILE"
+        if sudo pacman -S --noconfirm --needed --assume-installed libgcc cloudflare-warp-bin 2>&1 | tee -a "$LOG_FILE"; then
+            echo -e "${GREEN}WARP успешно установлен${NC}" | tee -a "$LOG_FILE"
+
+            # Настройка сервисов
+            echo -e "${WHITE}Настройка сервисов WARP...${NC}" | tee -a "$LOG_FILE"
+            sudo systemctl enable --now warp-svc.service 2>&1 | tee -a "$LOG_FILE"
+
+            # Пользовательский taskbar (если сессия активна)
+            if [ -n "$DBUS_SESSION_BUS_ADDRESS" ] || DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus systemctl --user status >/dev/null 2>&1; then
+                systemctl --user enable --now warp-taskbar 2>&1 | tee -a "$LOG_FILE" || true
+            fi
+        else
+            echo -e "${RED}Не удалось установить cloudflare-warp-bin даже с обходом зависимости.${NC}" | tee -a "$LOG_FILE"
+            echo -e "${YELLOW}Попробуй установить вручную после скрипта:${NC}" | tee -a "$LOG_FILE"
+            echo -e "   sudo pacman -S --needed --assume-installed libgcc cloudflare-warp-bin" | tee -a "$LOG_FILE"
+        fi
     else
         echo -e "${WHITE}Установка WARP пропущена${NC}" | tee -a "$LOG_FILE"
     fi
