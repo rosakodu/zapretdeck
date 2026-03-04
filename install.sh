@@ -444,15 +444,23 @@ if [[ "$PKG_MANAGER" == "pacman" ]]; then
        
         # Установка WARP
         echo -e "${WHITE}Установка cloudflare-warp-bin...${NC}" | tee -a "$LOG_FILE"
-        sudo $PKG_INSTALL_CMD cloudflare-warp-bin 2>&1 | tee -a "$LOG_FILE" || {
-            echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
-        }
+        if pacman -Si libgcc >/dev/null 2>&1; then
+            sudo $PKG_INSTALL_CMD cloudflare-warp-bin 2>&1 | tee -a "$LOG_FILE" || {
+                echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
+            }
+        else
+            echo -e "${YELLOW}Пакет libgcc не найден в репозиториях (SteamOS). Используем обходной путь...${NC}" | tee -a "$LOG_FILE"
+            sudo $PKG_INSTALL_CMD cloudflare-warp-bin --assume-installed libgcc 2>&1 | tee -a "$LOG_FILE" || {
+                echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
+            }
+        fi
        
         # Настройка и запуск сервисов WARP
         echo -e "${WHITE}Настройка сервисов WARP...${NC}" | tee -a "$LOG_FILE"
         sudo systemctl enable --now warp-svc.service 2>&1 | tee -a "$LOG_FILE"
-        if systemctl --user status >/dev/null 2>&1; then
-            systemctl --user enable --now warp-taskbar 2>&1 | tee -a "$LOG_FILE" || echo -e "${YELLOW}Предупреждение: Не удалось запустить warp-taskbar${NC}" | tee -a "$LOG_FILE"
+        # Проверка доступности пользовательского D-Bus (с подавлением ошибок соединения)
+        if DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus systemctl --user status >/dev/null 2>&1; then
+            DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus systemctl --user enable --now warp-taskbar 2>&1 | tee -a "$LOG_FILE" || echo -e "${YELLOW}Предупреждение: Не удалось запустить warp-taskbar${NC}" | tee -a "$LOG_FILE"
         else
             echo -e "${YELLOW}Пропуск запуска warp-taskbar: Пользовательская сессия systemd не активна или нет доступа к D-Bus${NC}" | tee -a "$LOG_FILE"
         fi
