@@ -438,22 +438,15 @@ if [[ "$PKG_MANAGER" == "pacman" ]]; then
             echo -e "${RED}Ошибка: Не удалось обновить базу данных пакетов${NC}" | tee -a "$LOG_FILE"
         }
         
-        # 7. Предварительная установка libgcc (иногда требуется для разрешения зависимостей в Chaotic-AUR)
-        echo -e "${WHITE}Проверка libgcc...${NC}" | tee -a "$LOG_FILE"
-        sudo pacman -S --noconfirm --needed libgcc 2>&1 | tee -a "$LOG_FILE" || true
+        # 7. Гарантируем установку gcc-libs
+        echo -e "${WHITE}Установка gcc-libs...${NC}" | tee -a "$LOG_FILE"
+        sudo pacman -S --noconfirm --needed gcc-libs 2>&1 | tee -a "$LOG_FILE" || true
        
         # Установка WARP
         echo -e "${WHITE}Установка cloudflare-warp-bin...${NC}" | tee -a "$LOG_FILE"
-        if pacman -Si libgcc >/dev/null 2>&1; then
-            sudo $PKG_INSTALL_CMD cloudflare-warp-bin 2>&1 | tee -a "$LOG_FILE" || {
-                echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
-            }
-        else
-            echo -e "${YELLOW}Пакет libgcc не найден в репозиториях (SteamOS). Используем обходной путь...${NC}" | tee -a "$LOG_FILE"
-            sudo $PKG_INSTALL_CMD cloudflare-warp-bin --assume-installed libgcc 2>&1 | tee -a "$LOG_FILE" || {
-                echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
-            }
-        fi
+        sudo $PKG_INSTALL_CMD cloudflare-warp-bin 2>&1 | tee -a "$LOG_FILE" || {
+            echo -e "${RED}Ошибка установки WARP${NC}" | tee -a "$LOG_FILE"
+        }
        
         # Настройка и запуск сервисов WARP
         echo -e "${WHITE}Настройка сервисов WARP...${NC}" | tee -a "$LOG_FILE"
