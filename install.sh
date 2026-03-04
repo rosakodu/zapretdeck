@@ -78,6 +78,28 @@ if ! sudo -n true 2>/dev/null; then
     echo -e "${WHITE}Введите пароль sudo для установки:${NC}" | tee -a "$LOG_FILE"
     sudo true || { echo -e "${RED}Ошибка: Неверный пароль sudo.${NC}" | tee -a "$LOG_FILE"; exit 1; }
 fi
+
+# === ПРЕДВАРИТЕЛЬНАЯ ОЧИСТКА ===
+echo -e "${WHITE}Выполняется предварительная очистка...${NC}"
+
+# 1. Отключаем защиту записи (только для SteamOS)
+if [ -f /usr/bin/steamos-readonly ]; then
+    sudo steamos-readonly disable
+fi
+
+# 2. Останавливаем и отключаем службу, чтобы интернет работал напрямую
+sudo systemctl disable --now zapretdeck.service 2>/dev/null || true
+sudo systemctl disable --now zapret_discord_youtube.service 2>/dev/null || true
+
+# 3. Очищаем сетевые правила nftables (через встроенный скрипт, если он есть)
+if [ -f /opt/zapretdeck/stop_and_clean_nft.sh ]; then
+    sudo bash /opt/zapretdeck/stop_and_clean_nft.sh
+fi
+
+# 4. Удаляем старые файлы (если они мешают чистой установке)
+sudo rm -rf /opt/zapretdeck
+sudo rm -f /etc/systemd/system/zapretdeck.service
+sudo rm -f /etc/systemd/system/zapret_discord_youtube.service
 # === 2. Определение системы ===
 echo -e "${WHITE}Определение системы...${NC}"
 IS_STEAMOS=false

@@ -4,314 +4,308 @@
 <context>
     <name>ZapretGUI</name>
     <message>
-    <source>ZapretDeck </source>
-    <translation> ZapretDeck </translation>
+        <source>ZapretDeck</source>
+        <translation>ZapretDeck</translation>
     </message>
     <message>
-    <source>Ready to work! </source>
-    <translation> Готов к работе! </translation>
+        <source>Ready to work!</source>
+        <translation>Готов к работе!</translation>
     </message>
     <message>
-    <source>Error </source>
-    <translation> Ошибка </translation>
+        <source>Error</source>
+        <translation>Ошибка</translation>
     </message>
     <message>
-    <source>Missing dependencies! Install: { deps } </source>
-    <translation> Отсутствуют зависимости! Установите: { deps } </translation>
+        <source>Missing dependencies! Install: {deps}</source>
+        <translation>Отсутствуют зависимости! Установите: {deps}</translation>
     </message>
     <message>
-    <source>AUTO - DISCOVERY IN PROGRESS...</source>
-    <translation> ИДЁТ АВТОПОДБОР...</translation>
+        <source>AUTO - DISCOVERY IN PROGRESS...</source>
+        <translation>ИДЁТ АВТОПОДБОР...</translation>
     </message>
     <message>
-    <source>Current bypass strategy: </source>
-    <translation> Текущий обход блокировок: </translation>
+        <source>Current bypass strategy:</source>
+        <translation>Текущий обход блокировок:</translation>
     </message>
     <message>
-    <source>Background Service </source>
-    <translation> Работа в фоне </translation>
+        <source>Background Service</source>
+        <translation>Работа в фоне</translation>
     </message>
     <message>
-    <source>Game Filter </source>
-    <translation> Игровой фильтр </translation>
+        <source>Game Filter</source>
+        <translation>Игровой фильтр</translation>
     </message>
     <message>
-    <source>START </source>
-    <translation> СТАРТ </translation>
+        <source>START</source>
+        <translation>СТАРТ</translation>
     </message>
     <message>
-    <source>STOP </source>
-    <translation> СТОП </translation>
+        <source>STOP</source>
+        <translation>СТОП</translation>
     </message>
     <message>
-    <source>CONNECT </source>
-    <translation> ПОДКЛЮЧЕНИЕ </translation>
+        <source>CONNECT</source>
+        <translation>ПОДКЛЮЧЕНИЕ</translation>
     </message>
     <message>
-    <source>DISCONNECT </source>
-    <translation> ОТКЛЮЧЕНИЕ </translation>
+        <source>DISCONNECT</source>
+        <translation>ОТКЛЮЧЕНИЕ</translation>
     </message>
     <message>
-    <source>VKontakte </source>
-    <translation> ВКонтакте </translation>
+        <source>VKontakte</source>
+        <translation>ВКонтакте</translation>
     </message>
     <message>
-    <source>Telegram </source>
-    <translation> Telegram </translation>
+        <source>Telegram</source>
+        <translation>Telegram</translation>
     </message>
     <message>
-    <source>Support Author </source>
-    <translation> Поддержать автора </translation>
+        <source>Support Author</source>
+        <translation>Поддержать автора</translation>
     </message>
     <message>
-    <source>Exit </source>
-    <translation> Выход </translation>
+        <source>Exit</source>
+        <translation>Выход</translation>
     </message>
     <message>
-    <source>Buy VPN </source>
-    <translation> Купить VPN </translation>
+        <source>Buy VPN</source>
+        <translation>Купить VPN</translation>
     </message>
     <message>
-    <source>STARTING </source>
-    <translation> ЗАПУСК </translation>
+        <source>STARTING</source>
+        <translation>ЗАПУСК</translation>
     </message>
     <message>
-    <source>STOPPING </source>
-    <translation> ОСТАНОВКА </translation>
+        <source>STOPPING</source>
+        <translation>ОСТАНОВКА</translation>
     </message>
     <message>
-    <source>Select a strategy! </source>
-    <translation> Выбери стратегию! </translation>
+        <source>Select a strategy!</source>
+        <translation>Выбери стратегию!</translation>
     </message>
     <message>
-    <source>Auto - discovery </source>
-    <translation> Автоподбор </translation>
+        <source>Auto-discovery</source>
+        <translation>Автоподбор</translation>
     </message>
     <message>
-    <source>Discovering strategy... (please wait)</source>
-    <translation> Подбор стратегии... (ждите) </translation>
+        <source>Discovering strategy... (please wait)</source>
+        <translation>Подбор стратегии... (ждите)</translation>
     </message>
     <message>
-    <source>Strategy discovered! </source>
-    <translation> Стратегия подобрана! </translation>
+        <source>Strategy discovered!</source>
+        <translation>Стратегия подобрана!</translation>
     </message>
     <message>
-    <source>Auto - discovery failed </source>
-    <translation> Автоподбор не удался </translation>
+        <source>Auto-discovery failed</source>
+        <translation>Автоподбор не удался</translation>
     </message>
     <message>
-    <source>Error: { error } </source>
-    <translation> Ошибка: { error } </translation>
+        <source>Error: {error}</source>
+        <translation>Ошибка: {error}</translation>
     </message>
     <message>
-    <source>Start error </source>
-    <translation> Ошибка запуска </translation>
+        <source>Start error</source>
+        <translation>Ошибка запуска</translation>
     </message>
     <message>
-    <source>Stopped </source>
-    <translation> Остановлено </translation>
+        <source>Stopped</source>
+        <translation>Остановлено</translation>
     </message>
     <message>
-    <source>Stop error </source>
-    <translation> Ошибка остановки </translation>
+        <source>Stop error</source>
+        <translation>Ошибка остановки</translation>
     </message>
     <message>
-    <source>Authorization </source>
-    <translation> Авторизация </translation>
+        <source>Authorization</source>
+        <translation>Авторизация</translation>
     </message>
     <message>
-    <source>Enter sudo password: </source>
-    <translation> Введите пароль sudo: </translation>
+        <source>Enter sudo password:</source>
+        <translation>Введите пароль sudo:</translation>
     </message>
     <message>
-    <source>Invalid password </source>
-    <translation> Неверный пароль </translation>
+        <source>Invalid password</source>
+        <translation>Неверный пароль</translation>
     </message>
     <message>
-    <source>Checking service status...</source>
-    <translation> Проверка состояния сервиса...</translation>
+        <source>Checking service status...</source>
+        <translation>Проверка состояния сервиса...</translation>
     </message>
     <message>
-    <source>Enabling background mode...</source>
-    <translation> Включение фонового режима...</translation>
+        <source>Enabling background mode...</source>
+        <translation>Включение фонового режима...</translation>
     </message>
     <message>
-    <source>Disabling background mode...</source>
-    <translation> Выключение фонового режима...</translation>
+        <source>Disabling background mode...</source>
+        <translation>Выключение фонового режима...</translation>
     </message>
     <message>
-    <source>Service error: { error } </source>
-    <translation> Ошибка сервиса: { error } </translation>
+        <source>Service error: {error}</source>
+        <translation>Ошибка сервиса: {error}</translation>
     </message>
     <message>
-    <source>command failed </source>
-    <translation> команда не удалась </translation>
+        <source>command failed</source>
+        <translation>команда не удалась</translation>
     </message>
     <message>
-    <source>Starting service...</source>
-    <translation> Запуск сервиса...</translation>
+        <source>Starting service...</source>
+        <translation>Запуск сервиса...</translation>
     </message>
     <message>
-    <source>Service failed to start! </source>
-    <translation> Сервис не запустился! </translation>
+        <source>Service failed to start!</source>
+        <translation>Сервис не запустился!</translation>
     </message>
     <message>
-    <source>Background service enabled </source>
-    <translation> Работа в фоне включена </translation>
+        <source>Background service enabled</source>
+        <translation>Работа в фоне включена</translation>
     </message>
     <message>
-    <source>Background service disabled </source>
-    <translation> Работа в фоне отключена </translation>
+        <source>Background service disabled</source>
+        <translation>Работа в фоне отключена</translation>
     </message>
     <message>
-    <source>Critical service error </source>
-    <translation> Критическая ошибка сервиса </translation>
+        <source>Critical service error</source>
+        <translation>Критическая ошибка сервиса</translation>
     </message>
     <message>
-    <source>Applying new filter(restarting service)...</source>
-    <translation> Применяю новый фильтр(перезапуск фона)...</translation>
+        <source>Applying new filter(restarting service)...</source>
+        <translation>Применяю новый фильтр(перезапуск фона)...</translation>
     </message>
     <message>
-    <source>Game filter enabled </source>
-    <translation> Игровой фильтр включён </translation>
+        <source>Game filter enabled</source>
+        <translation>Игровой фильтр включён</translation>
     </message>
     <message>
-    <source>Game filter disabled </source>
-    <translation> Игровой фильтр выключен </translation>
+        <source>Game filter disabled</source>
+        <translation>Игровой фильтр выключен</translation>
     </message>
     <message>
-    <source>Strategy saved </source>
-    <translation> Стратегия сохранена </translation>
+        <source>Strategy saved</source>
+        <translation>Стратегия сохранена</translation>
     </message>
     <message>
-    <source>Applying new strategy(restarting service)...</source>
-    <translation> Применяю новую стратегию(перезапуск фона)...</translation>
+        <source>Applying new strategy(restarting service)...</source>
+        <translation>Применяю новую стратегию(перезапуск фона)...</translation>
     </message>
     <message>
-    <source>New setting applied </source>
-    <translation> Новая настройка применена </translation>
+        <source>New setting applied</source>
+        <translation>Новая настройка применена</translation>
     </message>
     <message>
-    <source>Failed to apply setting </source>
-    <translation> Не удалось применить настройку </translation>
+        <source>Failed to apply setting</source>
+        <translation>Не удалось применить настройку</translation>
     </message>
     <message>
-    <source>OK </source>
-    <translation> ОК </translation>
+        <source>OK</source>
+        <translation>ОК</translation>
     </message>
     <message>
-    <source>Cancel </source>
-    <translation> Отменить </translation>
+        <source>Cancel</source>
+        <translation>Отменить</translation>
     </message>
     <message>
-    <source>Update </source>
-    <translation> Обновление </translation>
+        <source>Update</source>
+        <translation>Обновление</translation>
     </message>
     <message>
-    <source>Available: v{ version } </source>
-    <translation> Доступно: v{ version } </translation>
+        <source>Available: v{version}</source>
+        <translation>Доступно: v{version}</translation>
     </message>
     <message>
-    <source>New version available: v{ version } \nVisit GitHub to download.</source>
-    <translation> Вышла новая версия: v{ version } \nПерейдите на GitHub для загрузки.</translation>
+        <source>New version available: v{version} \nVisit GitHub to download.</source>
+        <translation>Вышла новая версия: v{version} \nПерейдите на GitHub для загрузки.</translation>
     </message>
     <message>
-    <source>WARP </source>
-    <translation> WARP </translation>
+        <source>WARP</source>
+        <translation>WARP</translation>
     </message>
     <message>
-    <source>START WARP </source>
-    <translation> ЗАПУСК WARP </translation>
+        <source>START WARP</source>
+        <translation>ЗАПУСК WARP</translation>
     </message>
     <message>
-    <source>STOP WARP </source>
-    <translation> ОСТАНОВИТЬ WARP </translation>
+        <source>STOP WARP</source>
+        <translation>ОСТАНОВИТЬ WARP</translation>
     </message>
     <message>
-    <source>WARP START </source>
-    <translation> WARP СТАРТ </translation>
+        <source>WARP START</source>
+        <translation>WARP СТАРТ</translation>
     </message>
     <message>
-    <source>WARP STOP </source>
-    <translation> WARP СТОП </translation>
+        <source>WARP STOP</source>
+        <translation>WARP СТОП</translation>
     </message>
     <message>
-    <source>ACTIVATING </source>
-    <translation> АКТИВИРОВАНИЕ </translation>
+        <source>ACTIVATING</source>
+        <translation>АКТИВИРОВАНИЕ</translation>
     </message>
     <message>
-    <source>DISCONNECTING </source>
-    <translation> ОТКЛЮЧЕНИЕ </translation>
+        <source>WARP: Activating...</source>
+        <translation>WARP: Активирование...</translation>
     </message>
     <message>
-    <source>WARP: Activating...</source>
-    <translation> WARP: Активирование...</translation>
+        <source>WARP: Connected</source>
+        <translation>WARP: Подключено</translation>
     </message>
     <message>
-    <source>WARP: Connected </source>
-    <translation> WARP: Подключено </translation>
+        <source>WARP: Activation issue</source>
+        <translation>WARP: Проблема активации</translation>
     </message>
     <message>
-    <source>WARP: Activation issue </source>
-    <translation> WARP: Проблема активации </translation>
+        <source>WARP activation failed: {msg}</source>
+        <translation>Ошибка активации WARP: {msg}</translation>
     </message>
     <message>
-    <source>WARP activation failed: { msg } </source>
-    <translation> Ошибка активации WARP: { msg } </translation>
+        <source>WARP: Disconnecting...</source>
+        <translation>WARP: Отключение...</translation>
     </message>
     <message>
-    <source>WARP: Disconnecting...</source>
-    <translation> WARP: Отключение...</translation>
+        <source>WARP: Disconnected</source>
+        <translation>WARP: Отключено</translation>
     </message>
     <message>
-    <source>WARP: Disconnected </source>
-    <translation> WARP: Отключено </translation>
+        <source>WARP disconnect failed: {msg}</source>
+        <translation>Ошибка отключения WARP: {msg}</translation>
     </message>
     <message>
-    <source>WARP disconnect failed: { msg } </source>
-    <translation> Ошибка отключения WARP: { msg } </translation>
+        <source>WARP error</source>
+        <translation>Ошибка WARP</translation>
     </message>
     <message>
-    <source>WARP error </source>
-    <translation> Ошибка WARP </translation>
+        <source>WARP is not installed</source>
+        <translation>WARP не установлен</translation>
     </message>
     <message>
-    <source>WARP is not installed </source>
-    <translation> WARP не установлен </translation>
+        <source>WARP РЕГИСТРАЦИЯ</source>
+        <translation>WARP РЕГИСТРАЦИЯ</translation>
     </message>
     <message>
-    <source>WARP РЕГИСТРАЦИЯ </source>
-    <translation> WARP РЕГИСТРАЦИЯ </translation>
+        <source>About ZapretDeck</source>
+        <translation>О программе ZapretDeck</translation>
     </message>
     <message>
-    <source>About ZapretDeck </source>
-    <translation> О программе ZapretDeck </translation>
+        <source>Don't show again</source>
+        <translation>Не показывать в следующий раз</translation>
     </message>
     <message>
-    <source>ZapretDeck — это лёгкий и удобный инструмент для обхода интернет - блокировок на Steam Deck и других Linux - системах.
-    WARP предназначен для защиты интернет - соединения: он шифрует трафик между вашим устройством и сетью Cloudflare, повышая уровень приватности и безопасности.Полезен для онлайн игр.
-    • WARP работает только в том случае, если он установлен в системе и активирована соответствующая стратегия обхода через Zapret.Если WARP не установлен, кнопка его включения отображаться не будет.
-    • На атомарных дистрибутивах(таких как SteamOS и другие) WARP может быть автоматически удалён после обновления системы.В этом случае рекомендуется выполнить его повторную установку.
-    Если ваш Steam Deck зависнет при включении на логотипе Steam, рекомендую отключить Wi - Fi
-    • Автор не несёт ответственности за ваши ПК и Steam Deck </source>
-    <translation> ZapretDeck — это лёгкий и удобный инструмент для обхода интернет - блокировок на Steam Deck и других Linux - системах.
-    WARP предназначен для защиты интернет - соединения: он шифрует трафик между вашим устройством и сетью Cloudflare, повышая уровень приватности и безопасности.Полезен для онлайн игр.
-    • WARP работает только в том случае, если он установлен в системе и активирована соответствующая стратегия обхода через Zapret.Если WARP не установлен, кнопка его включения отображаться не будет.
-    • На атомарных дистрибутивах(таких как SteamOS и другие) WARP может быть автоматически удалён после обновления системы.В этом случае рекомендуется выполнить его повторную установку.
-    Если ваш Steam Deck зависнет при включении на логотипе Steam, рекомендую отключить Wi - Fi
-    • Автор не несёт ответственности за ваши ПК и Steam Deck </translation>
+        <source>Доступна новая версия, обновить ?</source>
+        <translation>Доступна новая версия, обновить ?</translation>
     </message>
     <message>
-    <source>Don't show again</source>
-    <translation> Не показывать в следующий раз </translation>
+        <source>Starting update...</source>
+        <translation>Начинаю обновление...</translation>
     </message>
     <message>
-    <source>Доступна новая версия, обновить?</source>
-    <translation>Доступна новая версия, обновить?</translation>
+        <source>Yes</source>
+        <translation>Да</translation>
     </message>
     <message>
-    <source>Starting update...</source>
-    <translation>Начинаю обновление...</translation>
+        <source>No</source>
+        <translation>Нет</translation>
+    </message>
+    <message>
+        <source>Update error</source>
+        <translation>Ошибка обновления</translation>
     </message>
 </context>
 </TS>

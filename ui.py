@@ -563,6 +563,7 @@ class ZapretGUI(QMainWindow):
                 f"border: none; {_BTN_STYLE_BASE} }} "
                 f"QPushButton:hover {{ background-color: rgba(16, 185, 129, 0.3); border-radius: 12px; }}"
             )
+        layout.addSpacing(20)
         layout.addWidget(self.buyvpn_btn)
         
         
@@ -1269,7 +1270,7 @@ class ZapretGUI(QMainWindow):
         mw_rect = self.frameGeometry()
         cx = mw_rect.x() + mw_rect.width() // 2
         cy = mw_rect.y() + mw_rect.height() // 2
-        dialog.move(cx - dialog.width() // 2, cy - dialog.height() // 2)
+        dialog.move(cx - dialog.width() // 2, cy - dialog.height() // 2 - 40)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             return (line_edit.text().strip(), True)
         return ("", False)
@@ -1773,6 +1774,13 @@ class ZapretGUI(QMainWindow):
         msg.setWindowTitle(title)
         msg.setText(text)
         msg.addButton(self._tr("OK"), QMessageBox.ButtonRole.AcceptRole)
+        # Center and move 40px higher
+        msg.show()
+        msg_rect = msg.frameGeometry()
+        parent_rect = self.frameGeometry()
+        cx = parent_rect.x() + parent_rect.width() // 2
+        cy = parent_rect.y() + parent_rect.height() // 2
+        msg.move(cx - msg_rect.width() // 2, cy - msg_rect.height() // 2 - 40)
         msg.exec()
     
     def load_config(self) -> None:
@@ -1814,13 +1822,23 @@ class ZapretGUI(QMainWindow):
         )
         self.version_label.setStyleSheet("font-weight: bold; font-size: 16px; color: #ef4444;")
         
-        reply = QMessageBox.question(
-            self,
-            self._tr("Update"),
-            self._tr("Доступна новая версия, обновить?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        msg = QMessageBox(self)
+        msg.setWindowTitle(self._tr("Update"))
+        msg.setText(self._tr("Доступна новая версия, обновить?"))
+        yes_btn = msg.addButton(self._tr("Yes"), QMessageBox.ButtonRole.YesRole)
+        no_btn = msg.addButton(self._tr("No"), QMessageBox.ButtonRole.NoRole)
+        msg.setDefaultButton(yes_btn)
+        
+        # Center and move 40px higher
+        msg.show()
+        msg_rect = msg.frameGeometry()
+        parent_rect = self.frameGeometry()
+        cx = parent_rect.x() + parent_rect.width() // 2
+        cy = parent_rect.y() + parent_rect.height() // 2
+        msg.move(cx - msg_rect.width() // 2, cy - msg_rect.height() // 2 - 40)
+        
+        msg.exec()
+        if msg.clickedButton() == yes_btn:
             self.perform_update(download_url)
             
     def perform_update(self, download_url: str) -> None:
