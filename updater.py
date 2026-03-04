@@ -85,7 +85,11 @@ class UpdaterWorker(QThread):
                         term_cmd = t
                         break
                 if term_cmd:
-                    subprocess.Popen([term_cmd, "-e", f"bash '{install_script}'"])
+                    cmd_str = f"cd '{inner_dir}' && bash ./install.sh; echo 'Press Enter to close...'; read"
+                    if term_cmd in ["gnome-terminal"]:
+                        subprocess.Popen([term_cmd, "--", "bash", "-c", cmd_str])
+                    else:
+                        subprocess.Popen([term_cmd, "-e", "bash", "-c", cmd_str])
                     self.update_finished.emit(True, "Update started in terminal.")
                 else:
                     self.update_finished.emit(False, "No terminal emulator found to run the installer.")

@@ -164,7 +164,7 @@ if [[ "$IS_STEAMOS" == true ]] && command -v steamos-readonly >/dev/null 2>&1; t
 fi
 # === 5. Проверка необходимых файлов ===
 echo -e "${WHITE}Проверка наличия файлов...${NC}" | tee -a "$LOG_FILE"
-TEMP_DIR="$(pwd)"
+TEMP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 required_files=(
     "main_script.sh"
     "stop_and_clean_nft.sh"
