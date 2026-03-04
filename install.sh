@@ -135,7 +135,16 @@ fi
 echo -e "${GREEN}Обнаружена система:${NC} $PRETTY_NAME" | tee -a "$LOG_FILE"
 echo -e "${GREEN}Менеджер пакетов:${NC} $PKG_MANAGER" | tee -a "$LOG_FILE"
 echo | tee -a "$LOG_FILE"
-# === 3. Архитектурные фиксы и ключи ===
+# === 3. SteamOS: отключение readonly ===
+readonly_was_enabled=false
+if [[ "$IS_STEAMOS" == true ]] && command -v steamos-readonly >/dev/null 2>&1; then
+    if sudo steamos-readonly status 2>/dev/null | grep -qw "enabled" || mount | grep "on / " | grep -qE "(\s|,)ro(,|$)"; then
+        echo -e "${BLUE}SteamOS: временно отключаем readonly режим...${NC}" | tee -a "$LOG_FILE"
+        sudo steamos-readonly disable 2>&1 | tee -a "$LOG_FILE"
+        readonly_was_enabled=true
+    fi
+fi
+# === 3a. Архитектурные фиксы и ключи ===
 if [[ "$PKG_MANAGER" == "pacman" ]]; then
     echo -e "${BLUE}Настройка pacman (инициализация ключей)...${NC}" | tee -a "$LOG_FILE"
     sudo pacman-key --init 2>&1 | tee -a "$LOG_FILE"
@@ -144,23 +153,14 @@ if [[ "$PKG_MANAGER" == "pacman" ]]; then
         sudo pacman-key --populate holo 2>&1 | tee -a "$LOG_FILE"
     fi
 fi
-# === 3a. SteamOS фиксы с вопросами ===
+# === 3b. SteamOS фиксы с вопросами ===
 # Фиксы openh264 и обновления SteamOS удалены
-# === 3b. Обновление репозиториев ===
+# === 4. Обновление репозиториев ===
 echo -e "${BLUE}Обновление репозиториев...${NC}" | tee -a "$LOG_FILE"
 if [[ "$PKG_MANAGER" != "rpm-ostree" ]]; then
     sudo $PKG_UPDATE_CMD 2>&1 | tee -a "$LOG_FILE" || echo -e "${YELLOW}Предупреждение: Обновление репозиториев не удалось${NC}" | tee -a "$LOG_FILE"
 else
     echo -e "${YELLOW}Для Bazzite обновите систему вручную после установки: rpm-ostree upgrade${NC}" | tee -a "$LOG_FILE"
-fi
-# === 4. SteamOS: отключение readonly ===
-readonly_was_enabled=false
-if [[ "$IS_STEAMOS" == true ]] && command -v steamos-readonly >/dev/null 2>&1; then
-    if mount | grep "on / " | grep -q "ro,"; then
-        echo -e "${BLUE}SteamOS: временно отключаем readonly режим...${NC}" | tee -a "$LOG_FILE"
-        sudo steamos-readonly disable 2>&1 | tee -a "$LOG_FILE"
-        readonly_was_enabled=true
-    fi
 fi
 # === 5. Проверка необходимых файлов ===
 echo -e "${WHITE}Проверка наличия файлов...${NC}" | tee -a "$LOG_FILE"
@@ -235,7 +235,7 @@ if [ -d "$INSTALL_DIR" ]; then
 fi
 
 # Удаление всех старых ярлыков и скриптов пользователя
-rm -f "$REAL_HOME/.local/bin/zapretdeck" 2>/dev/null || true
+sudo rm -f "$REAL_HOME/.local/bin/zapretdeck" 2>/dev/null || true
 rm -f "$REAL_HOME/.local/share/applications/zapretdeck.desktop" 2>/dev/null || true
 sudo rm -f /usr/local/share/applications/zapretdeck.desktop 2>/dev/null || true
 sudo rm -f /usr/share/applications/zapretdeck.desktop 2>/dev/null || true
@@ -458,13 +458,14 @@ if [[ "$PKG_MANAGER" == "pacman" ]]; then
 fi
 # === 11. Финальная настройка ===
 mkdir -p "$REAL_HOME/.local/bin" 2>&1 | tee -a "$LOG_FILE"
+sudo chown -R "$REAL_USER":"$REAL_USER" "$REAL_HOME/.local/bin" 2>/dev/null || true
 
 # Удаляем старые скрипты запуска (включая с путями к venv)
-rm -f "$REAL_HOME/.local/bin/zapretdeck" 2>/dev/null || true
-rm -f /usr/local/bin/zapretdeck 2>/dev/null || true
+sudo rm -f "$REAL_HOME/.local/bin/zapretdeck" 2>/dev/null || true
+sudo rm -f /usr/local/bin/zapretdeck 2>/dev/null || true
 
 # Создаём новый скрипт запуска
-bash -c "cat > $REAL_HOME/.local/bin/zapretdeck" << 'EOF'
+cat > "$REAL_HOME/.local/bin/zapretdeck" << 'EOF'
 #!/bin/bash
 # ZapretDeck launcher script
 cd "$HOME/zapretdeck"
