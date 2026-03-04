@@ -27,7 +27,11 @@ class UpdateChecker(QThread):
                     is_prerelease = release.get("prerelease", False)
                     if self.check_prerelease == is_prerelease:
                         tag_name = release.get("tag_name", "").lstrip("v.")
-                        download_url = "https://api.github.com/repos/rosakodu/zapretdeck/zipball/master"
+                        # Always pull from master branch zipball as requested by user
+                        download_url = "https://github.com/rosakodu/zapretdeck/archive/refs/heads/master.zip"
+                        if self.check_prerelease:
+                             download_url = release.get("zipball_url") # For DEVEL keep release zip for now
+                             
                         if self.is_newer(tag_name, self.current_version):
                             self.update_available.emit(tag_name, download_url)
                         break
