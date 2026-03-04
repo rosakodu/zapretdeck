@@ -1,4 +1,4 @@
 PyQt6
-packaging
 requests
+packaging
 psutil
