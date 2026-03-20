@@ -140,7 +140,7 @@ cd zapretdeck
 sudo steamos-readonly disable
 
 # Скачиваем архив
-curl -L -o ZapretDeck_v0.2.2.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.2.0/ZapretDeck_v0.2.2.tar.gz
+curl -L -o ZapretDeck_v0.2.2.tar.gz https://github.com/rosakodu/zapretdeck/releases/download/v.0.2.2/ZapretDeck_v0.2.2.tar.gz
 
 # Распаковываем архив
 tar -xzf ZapretDeck_v0.2.2.tar.gz --strip-components=1
