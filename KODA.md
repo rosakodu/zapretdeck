@@ -6,7 +6,7 @@ ZapretDeck — это инструмент для обхода сетевых о
 
 **Основное назначение:** Обход блокировок YouTube, Discord и других сервисов через DPI-спуфинг с использованием nfqws и nftables.
 
-**Текущая версия:** 0.2.1
+**Текущая версия:** 0.2.2
 
 ## Основные технологии
 
@@ -27,7 +27,8 @@ zapretdeck/
 ├── main.py                    # Точка входа, CLI интерфейс
 ├── ui.py                      # PyQt6 GUI
 ├── config.py                  # Обёртка над ConfigManager
-├── updater.py                 # Модуль автообновления и проверки новых версий
+├── updater.py                 # Потоки Qt: проверка обновлений и установка zipball
+├── github_release_updates.py  # GitHub Releases API, semver, каналы stable / devel
 ├── utils.py                   # Утилиты, ConfigManager, стратегии
 ├── warp.py                    # Интеграция с Cloudflare WARP
 ├── monitor.py                 # Мониторинг статуса, тестирование сайтов
@@ -84,6 +85,34 @@ zapretdeck/
 Мониторинг и тестирование:
 - `StatusChecker` — поток мониторинга nfqws, сервиса, WARP
 - `SiteTester` — проверка доступности YouTube, Discord
+
+#### github_release_updates.py
+Универсальный модуль проверки обновлений через [GitHub Releases API](https://docs.github.com/en/rest/releases/releases#list-releases):
+- `fetch_all_releases` — загрузка всех опубликованных релизов с пагинацией, обработка 403/404/сетевых ошибок и лимитов (логируется `X-RateLimit-Remaining`).
+- `release_matches_channel` / фильтрация: канал **stable** — только `prerelease: false`, без маркера `DEVEL` в теге или названии релиза; канал **devel** — только pre-release и с `DEVEL` в `tag_name` или `name`.
+- `find_newer_release` — выбор **максимальной** semver среди подходящих релизов, строго новее локальной версии (`packaging.version`).
+- `normalize_version_for_semver` — нормализация строк (`ZapretDeck_`, `v`/`v.`, суффикс `DEVEL`); исправляет прежний антипаттерн `lstrip("v.")`, который обрезал произвольные символы из набора `v` и `.`, а не префикс версии.
+- `check_for_updates_sync` — удобная обёртка для GUI/скриптов.
+
+#### updater.py
+- `UpdateChecker` (QThread) — вызывает `check_for_updates_sync` и при нахождении релиза шлёт сигнал с `tag_name` и `zipball_url`.
+- `UpdaterWorker` — скачивание zipball с `raise_for_status()`, распаковка, запуск `install.sh` в терминале; временная директория удаляется в `finally` (раньше возможна была утечка каталогов).
+
+**Подтверждение пользователем:** диалог «обновить?» остаётся в `ui.py` (`on_update_available`), автоматической установки без согласия нет.
+
+**Пример (скрипт или отладка):**
+
+```python
+from github_release_updates import check_for_updates_sync
+
+info, err = check_for_updates_sync("0.2.2", "stable")
+if err:
+    print("Ошибка:", err)
+elif info:
+    print("Новый релиз:", info.tag_name, info.zipball_url, info.semver_text)
+else:
+    print("Уже актуально")
+```
 
 #### main_script.sh
 Основной shell-скрипт для запуска стратегий:

@@ -38,7 +38,7 @@ from updater import UpdateChecker, UpdaterWorker
 
 logger = logging.getLogger(__name__)
 
-CURRENT_VERSION = "0.2.1"
+CURRENT_VERSION = "0.2.2"
 
 # Общие градиенты и стиль для главной и WARP кнопок (плавные современные градиенты)
 _BTN_STYLE_BASE = "border-radius:12px; font-weight:bold; font-size:20px; outline:none;"
@@ -104,6 +104,7 @@ class ZapretGUI(QMainWindow):
     status_requested = pyqtSignal(str, str)
     auto_discovery_done = pyqtSignal(str)
     set_button_busy = pyqtSignal(bool)
+    warp_operation_finished = pyqtSignal(str, bool, str)
     
     def __init__(self, translator=None):
         super().__init__()
@@ -192,6 +193,9 @@ class ZapretGUI(QMainWindow):
                 self._tr("Missing dependencies! Install: {deps}").format(deps=missing_str)
             )
             sys.exit(1)
+        
+        # Подключаем безопасный сигнал для возврата из потоков
+        self.warp_operation_finished.connect(self._on_warp_finished)
         
         self.init_ui()
         self.load_config()
@@ -727,11 +731,11 @@ class ZapretGUI(QMainWindow):
             return
         
         # 2. Проверка установки и регистрации - показываем анимацию регистрации
-        trans = "color:#fff; background:transparent; " + _BTN_STYLE_BASE
         if not self.warp_installed:
-            self.warp_btn.setStyleSheet(trans)
-            self.warp_btn.setEnabled(False)
-            self.warp_btn.setText(self._tr("WARP is not installed"))
+            # Кнопка активна — предлагает установить WARP
+            self.warp_btn.setEnabled(True)
+            self.warp_btn.setStyleSheet(_BTN_STYLE_BASE)
+            self.warp_btn.setText(self._tr("WARP not installed on device! Install?"))
             return
         if not self.warp_is_registered:
             # Показываем анимацию регистрации
@@ -914,7 +918,7 @@ class ZapretGUI(QMainWindow):
             return
         
         if not self.warp_installed:
-            self.show_status(self._tr("WARP не установлен"), "#ff6b6b")
+            self._install_warp()
             return
         
         # Must be registered to use this button (registration happens in background)
@@ -946,7 +950,7 @@ class ZapretGUI(QMainWindow):
                     logger.error(f"WARP disconnect error: {e}")
                     success, msg = False, str(e)
                 finally:
-                    QTimer.singleShot(100, partial(self._on_warp_finished, "disconnect", success, msg))
+                    self.warp_operation_finished.emit("disconnect", success, msg)
 
             threading.Thread(target=warp_disconnect_task, daemon=True).start()
             return
@@ -976,13 +980,56 @@ class ZapretGUI(QMainWindow):
                     logger.error(f"WARP connection error: {e}")
                     success, msg = False, str(e)
                 finally:
-                    # Всегда уведомляем главный поток, чтобы снять анимацию и обновить UI
-                    QTimer.singleShot(100, partial(self._on_warp_finished, "connect", success, msg))
+                    # Всегда уведомляем главный поток через безопасный сигнал, чтобы снять анимацию и обновить UI
+                    self.warp_operation_finished.emit("connect", success, msg)
 
             threading.Thread(target=warp_connect_task, daemon=True).start()
             return
     
-    
+
+    def _install_warp(self) -> None:
+        """
+        Запустить установку WARP через install.sh в терминале.
+        Ищет подходящий терминал и запускает install.sh из BASE_DIR.
+        """
+        install_script = os.path.join(BASE_DIR, "install.sh")
+        if not os.path.isfile(install_script):
+            self.show_status(self._tr("install.sh not found"), "#ff6b6b")
+            logger.error(f"install.sh not found at: {install_script}")
+            return
+
+        # Ищем доступный терминал
+        terminals = [
+            ["konsole", "--", "bash", install_script],
+            ["gnome-terminal", "--", "bash", install_script],
+            ["xterm", "-e", "bash", install_script],
+            ["kitty", "bash", install_script],
+            ["alacritty", "-e", "bash", install_script],
+            ["xfce4-terminal", "-e", f"bash {install_script}"],
+            ["tilix", "-e", "bash", install_script],
+        ]
+
+        for term_cmd in terminals:
+            term = term_cmd[0]
+            try:
+                result = subprocess.run(["which", term], capture_output=True)
+                if result.returncode == 0:
+                    logger.info(f"Launching WARP install via terminal: {term}")
+                    subprocess.Popen(term_cmd, cwd=BASE_DIR)
+                    self.show_status(self._tr("Installing WARP..."), "#f59e0b")
+                    return
+            except Exception as e:
+                logger.debug(f"Terminal {term} not available: {e}")
+                continue
+
+        # Запасной вариант — xdg-open
+        try:
+            subprocess.Popen(["bash", install_script], cwd=BASE_DIR)
+            self.show_status(self._tr("Installing WARP..."), "#f59e0b")
+        except Exception as e:
+            logger.error(f"Failed to launch install.sh: {e}")
+            self.show_status(self._tr("Failed to launch installer"), "#ff6b6b")
+
     def _on_warp_finished(self, operation: str, success: bool, msg: str) -> None:
         """
         Handle WARP operation completion - called from main thread via QTimer.singleShot.
@@ -1007,6 +1054,9 @@ class ZapretGUI(QMainWindow):
                 self.warp_is_registered = False
                 self._warp_connect_success_at = None
                 self.show_status(self._tr("WARP disconnected"), "#107C10")
+                
+            elif op == "register":
+                self.on_warp_registration_changed(True)
 
             self.update_warp_button_style()
         else:
@@ -1624,10 +1674,9 @@ class ZapretGUI(QMainWindow):
                 logger.error(f"Background WARP registration error: {e}")
             finally:
                 self.is_registering_warp = False
-                # Background monitoring eventually updates UI, 
                 # but we trigger immediate UI update here for better responsiveness.
                 if success:
-                    QTimer.singleShot(0, lambda: self.on_warp_registration_changed(True))
+                    self.warp_operation_finished.emit("register", True, "")
 
         threading.Thread(target=registration_task, daemon=True).start()
     
@@ -1749,9 +1798,7 @@ class ZapretGUI(QMainWindow):
                 def _full_deactivate():
                     success, msg = warp.disconnect_warp()
                     if success:
-                        self.warp_is_connected = False
-                        self.warp_is_registered = False
-                        QTimer.singleShot(0, self.update_warp_button_style)
+                        self.warp_operation_finished.emit("disconnect", success, msg)
                 
                 threading.Thread(target=_full_deactivate, daemon=True).start()
 
@@ -1810,7 +1857,9 @@ class ZapretGUI(QMainWindow):
     
     def check_for_update(self) -> None:
         try:
-            self.update_checker = UpdateChecker(CURRENT_VERSION, check_prerelease="DEVEL" in CURRENT_VERSION)
+            # stable: только обычные релизы; devel: только GitHub pre-release с DEVEL в теге/имени
+            channel = "devel" if "DEVEL" in CURRENT_VERSION.upper() else "stable"
+            self.update_checker = UpdateChecker(CURRENT_VERSION, channel)
             self.update_checker.update_available.connect(self.on_update_available)
             self.update_checker.start()
         except Exception as e:

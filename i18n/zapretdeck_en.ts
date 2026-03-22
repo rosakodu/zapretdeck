@@ -276,8 +276,24 @@
                                                                                                                                                                                                                                                                                                                                                                                                     <translation> WARP error </translation>
                                                                                                                                                                                                                                                                                                                                                                                                         </message>
                                                                                                                                                                                                                                                                                                                                                                                                         <message>
-                                                                                                                                                                                                                                                                                                                                                                                                        <source>WARP is not installed </source>
-                                                                                                                                                                                                                                                                                                                                                                                                            <translation> WARP NOT INSTALL </translation>
+                                                                                                                                                                                                                                                                                                                                                                                                        <source>WARP is not installed</source>
+        <translation>WARP is not installed</translation>
+    </message>
+    <message>
+        <source>WARP not installed on device! Install?</source>
+        <translation>WARP not installed on device! Install?</translation>
+    </message>
+    <message>
+        <source>Installing WARP...</source>
+        <translation>Installing WARP...</translation>
+    </message>
+    <message>
+        <source>Failed to launch installer</source>
+        <translation>Failed to launch installer</translation>
+    </message>
+    <message>
+        <source>install.sh not found</source>
+        <translation>install.sh not found</translation>
                                                                                                                                                                                                                                                                                                                                                                                                                 </message>
                                                                                                                                                                                                                                                                                                                                                                                                                 <message>
                                                                                                                                                                                                                                                                                                                                                                                                                 <source>WARP РЕГИСТРАЦИЯ </source>

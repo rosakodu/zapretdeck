@@ -25,7 +25,7 @@ import sys_utils
 
 
 
-CURRENT_VERSION = "0.2.1"
+CURRENT_VERSION = "0.2.2"
 
 
 def setup_logging(debug: bool = False) -> None:
